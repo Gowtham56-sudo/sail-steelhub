@@ -1,9 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { AlertCircle, Loader2, Lock, ShieldCheck, User } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { AlertCircle, ArrowLeft, CalendarDays, Loader2, Lock, ShieldCheck, User } from "lucide-react";
 import { SailLogo } from "@/components/SailLogo";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/lib/i18n";
+import { supabase } from "@/integrations/supabase/client";
+import { activateAccount, getAccountStatus } from "@/lib/employee-auth.functions";
+import {
+  employeeNumberToAuthEmail,
+  normalizeEmployeeNumber,
+  MIN_PASSWORD_LENGTH,
+} from "@/lib/employee-account";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
