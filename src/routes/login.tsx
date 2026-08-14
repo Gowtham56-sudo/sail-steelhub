@@ -140,7 +140,9 @@ function LoginPage() {
       </header>
 
       <div className="mx-auto -mt-10 w-full max-w-md px-4 pb-14">
+        {step === "login" ? (
         <section className="card-elevated animate-rise p-6">
+
           <h2 className="text-2xl font-bold">{t("login.title")}</h2>
           <p className="mt-1 text-base text-muted-foreground">{t("login.subtitle")}</p>
 
