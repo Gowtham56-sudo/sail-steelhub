@@ -34,12 +34,28 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { t } = useI18n();
+  const navigate = useNavigate();
+  const checkStatus = useServerFn(getAccountStatus);
+  const activate = useServerFn(activateAccount);
+
+  const [step, setStep] = useState<"login" | "activate">("login");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [password, setPassword] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function signInWith(pwd: string) {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: employeeNumberToAuthEmail(employeeNumber),
+      password: pwd,
+    });
+    return signInError;
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
@@ -49,12 +65,69 @@ function LoginPage() {
     }
 
     setSubmitting(true);
-    // Stage 2 connects this to secure backend authentication.
-    window.setTimeout(() => {
+    try {
+      const signInError = await signInWith(password);
+      if (!signInError) {
+        navigate({ to: "/_authenticated/home" as string as "/home", replace: true });
+        return;
+      }
+
+      const status = await checkStatus({
+        data: { employeeNumber: normalizeEmployeeNumber(employeeNumber) },
+      });
+      if (status.known && !status.activated) {
+        setStep("activate");
+        setError(null);
+        return;
+      }
+      setError("Employee number or password is incorrect.");
+    } catch {
+      setError("We could not reach the server. Please try again.");
+    } finally {
       setSubmitting(false);
-      setError("Sign-in is not connected yet. This is enabled in the next stage.");
-    }, 700);
+    }
   }
+
+  async function onActivate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(t("activate.weak"));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError(t("activate.mismatch"));
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await activate({
+        data: {
+          employeeNumber: normalizeEmployeeNumber(employeeNumber),
+          dateOfBirth,
+          password: newPassword,
+        },
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      const signInError = await signInWith(newPassword);
+      if (signInError) {
+        setStep("login");
+        setError("Account activated. Please sign in with your new password.");
+        return;
+      }
+      navigate({ to: "/_authenticated/home" as string as "/home", replace: true });
+    } catch {
+      setError("We could not reach the server. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
 
   return (
     <main className="min-h-screen bg-background">
