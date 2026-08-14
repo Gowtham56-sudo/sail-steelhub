@@ -14,16 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          details: Json
+          employee_number: string | null
+          entity: string | null
+          entity_id: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json
+          employee_number?: string | null
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json
+          employee_number?: string | null
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      employees: {
+        Row: {
+          activated_at: string | null
+          auth_user_id: string | null
+          created_at: string
+          date_of_birth: string | null
+          date_of_joining: string | null
+          department: string | null
+          designation: string | null
+          employee_number: string
+          full_name: string
+          id: string
+          is_active: boolean
+          is_admin: boolean
+          phone: string | null
+          photo_url: string | null
+          updated_at: string
+          work_email: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          date_of_joining?: string | null
+          department?: string | null
+          designation?: string | null
+          employee_number: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          is_admin?: boolean
+          phone?: string | null
+          photo_url?: string | null
+          updated_at?: string
+          work_email?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          date_of_joining?: string | null
+          department?: string | null
+          designation?: string | null
+          employee_number?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          is_admin?: boolean
+          phone?: string | null
+          photo_url?: string | null
+          updated_at?: string
+          work_email?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "employee"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +266,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "employee"],
+    },
   },
 } as const
