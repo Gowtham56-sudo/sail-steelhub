@@ -230,6 +230,109 @@ function LoginPage() {
             </button>
           </form>
         </section>
+        ) : (
+        <section className="card-elevated animate-rise p-6">
+          <h2 className="text-2xl font-bold">{t("activate.title")}</h2>
+          <p className="mt-1 text-base text-muted-foreground">{t("activate.subtitle")}</p>
+          <p className="mt-3 rounded-xl bg-muted p-3 text-base font-semibold tracking-wide">
+            {employeeNumber}
+          </p>
+
+          <form onSubmit={onActivate} className="mt-6 space-y-5" noValidate>
+            <div>
+              <label htmlFor="dob" className="mb-2 block text-base font-semibold text-foreground">
+                {t("activate.dob")}
+              </label>
+              <div className="relative">
+                <CalendarDays
+                  aria-hidden
+                  className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground"
+                />
+                <input
+                  id="dob"
+                  type="date"
+                  required
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  className="min-h-14 w-full rounded-xl border border-input bg-background pr-4 pl-12 text-lg text-foreground focus:border-ring focus:outline-none focus-visible:focus-ring"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="newPassword"
+                className="mb-2 block text-base font-semibold text-foreground"
+              >
+                {t("activate.newPassword")}
+              </label>
+              <input
+                id="newPassword"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="min-h-14 w-full rounded-xl border border-input bg-background px-4 text-lg text-foreground focus:border-ring focus:outline-none focus-visible:focus-ring"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="mb-2 block text-base font-semibold text-foreground"
+              >
+                {t("activate.confirmPassword")}
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="min-h-14 w-full rounded-xl border border-input bg-background px-4 text-lg text-foreground focus:border-ring focus:outline-none focus-visible:focus-ring"
+              />
+            </div>
+
+            {error ? (
+              <p
+                role="alert"
+                className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3 text-base font-medium text-destructive"
+              >
+                <AlertCircle aria-hidden className="mt-0.5 size-5 shrink-0" />
+                {error}
+              </p>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="surface-steel flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-lg font-bold tracking-wide shadow-[var(--shadow-card)] transition-transform active:scale-[0.98] disabled:opacity-70"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 aria-hidden className="size-5 animate-spin" />
+                  {t("common.loading")}
+                </>
+              ) : (
+                t("activate.submit")
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStep("login");
+                setError(null);
+              }}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold text-primary"
+            >
+              <ArrowLeft aria-hidden className="size-5" />
+              {t("activate.back")}
+            </button>
+          </form>
+        </section>
+        )}
+
 
         <div className="mt-6">
           <LanguageSelector />
