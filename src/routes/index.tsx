@@ -1,24 +1,57 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { SailLogo } from "@/components/SailLogo";
+import { useI18n } from "@/lib/i18n";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "SAIL Salem Steel Plant — Employee Knowledge Management" },
+      {
+        name: "description",
+        content:
+          "Official employee knowledge hub for SAIL Salem Steel Plant: daily learning, quizzes, circulars, events and announcements.",
+      },
+      { property: "og:title", content: "SAIL Employee Knowledge Management System" },
+      {
+        property: "og:description",
+        content:
+          "Daily learning, safety knowledge, circulars and events for Salem Steel Plant employees.",
+      },
+    ],
+  }),
+  component: SplashScreen,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function SplashScreen() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void navigate({ to: "/login" });
+    }, 1900);
+    return () => window.clearTimeout(timer);
+  }, [navigate]);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="surface-steel flex min-h-screen flex-col items-center justify-center px-6 text-center">
+      <div className="animate-rise flex flex-col items-center">
+        <div className="rounded-full bg-primary-foreground/95 p-5 shadow-[var(--shadow-lift)]">
+          <SailLogo size={104} priority />
+        </div>
+        <h1 className="mt-8 text-3xl font-bold tracking-wide">{t("app.org")}</h1>
+        <p className="mt-3 max-w-sm text-lg text-primary-foreground/85">{t("app.name")}</p>
+        <p className="mt-6 text-base font-medium text-accent">{t("splash.tagline")}</p>
+      </div>
+
+      <div
+        className="mt-12 h-1.5 w-40 overflow-hidden rounded-full bg-primary-foreground/20"
+        role="status"
+        aria-label={t("common.loading")}
+      >
+        <div className="surface-molten h-full w-1/3 animate-[rise-in_0.4s_ease-out,pulse_1.2s_ease-in-out_infinite]" />
+      </div>
+    </main>
   );
 }
