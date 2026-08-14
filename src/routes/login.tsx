@@ -68,7 +68,7 @@ function LoginPage() {
     try {
       const signInError = await signInWith(password);
       if (!signInError) {
-        navigate({ to: "/_authenticated/home" as string as "/home", replace: true });
+        navigate({ to: "/home", replace: true });
         return;
       }
 
@@ -120,7 +120,7 @@ function LoginPage() {
         setError("Account activated. Please sign in with your new password.");
         return;
       }
-      navigate({ to: "/_authenticated/home" as string as "/home", replace: true });
+      navigate({ to: "/home", replace: true });
     } catch {
       setError("We could not reach the server. Please try again.");
     } finally {
