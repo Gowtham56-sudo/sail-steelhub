@@ -84,10 +84,7 @@ function ProfilePage() {
       )}
 
       <section className="card-elevated mt-5 p-6">
-        <h2 className="text-lg font-bold">{t("login.language")}</h2>
-        <div className="mt-3">
-          <LanguageSelector />
-        </div>
+        <LanguageSelector />
       </section>
 
       <button
