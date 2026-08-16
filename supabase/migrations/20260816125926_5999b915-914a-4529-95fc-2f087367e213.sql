@@ -1,0 +1,3 @@
+UPDATE public.learning_modules SET video_url='https://www.youtube.com/embed/NV2cNmfK8_Y' WHERE id='11111111-1111-4111-8111-111111111111';
+UPDATE public.learning_modules SET video_url='https://www.youtube.com/embed/ohkJg8JxFPY' WHERE id='22222222-2222-4222-8222-222222222222';
+UPDATE public.learning_modules SET video_url='https://www.youtube.com/embed/OhmiECKjYx8' WHERE id='33333333-3333-4333-8333-333333333333';

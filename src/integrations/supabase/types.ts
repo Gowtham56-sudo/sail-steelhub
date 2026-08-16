@@ -104,6 +104,121 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_modules: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          is_published: boolean
+          publish_date: string
+          summary: string | null
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          publish_date?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          publish_date?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      quiz_attempts: {
+        Row: {
+          answers: Json
+          completed_at: string
+          id: string
+          module_id: string
+          score: number
+          total: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string
+          id?: string
+          module_id: string
+          score: number
+          total: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string
+          id?: string
+          module_id?: string
+          score?: number
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          correct_index: number
+          created_at: string
+          explanation: string | null
+          id: string
+          module_id: string
+          options: Json
+          order_index: number
+          question: string
+        }
+        Insert: {
+          correct_index: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          module_id: string
+          options: Json
+          order_index: number
+          question: string
+        }
+        Update: {
+          correct_index?: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          module_id?: string
+          options?: Json
+          order_index?: number
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
