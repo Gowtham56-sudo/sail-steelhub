@@ -18,6 +18,7 @@ import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedKnowledgeRouteImport } from './routes/_authenticated/knowledge'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as ApiAiChatRouteImport } from './routes/api/ai-chat'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -63,6 +64,11 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiAiChatRoute = ApiAiChatRouteImport.update({
+  id: '/api/ai-chat',
+  path: '/api/ai-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof AuthenticatedHomeRoute
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/api/ai-chat': typeof ApiAiChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/home': typeof AuthenticatedHomeRoute
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/api/ai-chat': typeof ApiAiChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/knowledge': typeof AuthenticatedKnowledgeRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/api/ai-chat': typeof ApiAiChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/knowledge'
     | '/profile'
+    | '/api/ai-chat'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/knowledge'
     | '/profile'
+    | '/api/ai-chat'
   id:
     | '__root__'
     | '/'
@@ -128,12 +139,14 @@ export interface FileRouteTypes {
     | '/_authenticated/home'
     | '/_authenticated/knowledge'
     | '/_authenticated/profile'
+    | '/api/ai-chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ApiAiChatRoute: typeof ApiAiChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -201,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/ai-chat': {
+      id: '/api/ai-chat'
+      path: '/api/ai-chat'
+      fullPath: '/api/ai-chat'
+      preLoaderRoute: typeof ApiAiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -229,6 +249,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
+  ApiAiChatRoute: ApiAiChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
