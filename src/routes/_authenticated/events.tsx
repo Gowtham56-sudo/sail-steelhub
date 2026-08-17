@@ -1,6 +1,11 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell, ComingSoon } from "@/components/AppShell";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { ArrowLeft, CalendarDays, Images, Loader2, MapPin } from "lucide-react";
+import { AppShell } from "@/components/AppShell";
 import { useI18n } from "@/lib/i18n";
+import { getEvent, getEvents } from "@/lib/events.functions";
 
 export const Route = createFileRoute("/_authenticated/events")({
   head: () => ({
@@ -22,11 +27,197 @@ export const Route = createFileRoute("/_authenticated/events")({
   component: EventsPage,
 });
 
+function formatDate(value: string) {
+  const d = new Date(`${value}T00:00:00`);
+  return d.toLocaleDateString(undefined, { day: "2-digit", month: "long", year: "numeric" });
+}
+
 function EventsPage() {
   const { t } = useI18n();
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  if (openId) {
+    return <EventDetail eventId={openId} onBack={() => setOpenId(null)} />;
+  }
+
   return (
     <AppShell title={t("nav.events")}>
-      <ComingSoon title={t("events.title")} note={t("events.note")} />
+      <EventList onOpen={setOpenId} />
+    </AppShell>
+  );
+}
+
+function EventList({ onOpen }: { onOpen: (id: string) => void }) {
+  const { t } = useI18n();
+  const fetchEvents = useServerFn(getEvents);
+  const { data, isPending } = useQuery({ queryKey: ["events"], queryFn: () => fetchEvents() });
+
+  const events = data?.events ?? [];
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const upcoming = events.filter((e) => e.event_date >= todayIso).reverse();
+  const past = events.filter((e) => e.event_date < todayIso);
+
+  if (isPending) {
+    return (
+      <p className="flex items-center gap-2 text-lg text-muted-foreground">
+        <Loader2 aria-hidden className="size-5 animate-spin" />
+        {t("common.loading")}
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <h1 className="text-2xl font-bold">{t("events.title")}</h1>
+      <p className="mt-1 text-base text-muted-foreground">{t("events.subtitle")}</p>
+
+      {events.length === 0 && (
+        <p className="card-elevated mt-5 p-5 text-lg text-muted-foreground">{t("events.empty")}</p>
+      )}
+
+      {upcoming.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-lg font-bold">{t("events.upcoming")}</h2>
+          <ul className="mt-3 space-y-4">
+            {upcoming.map((e) => (
+              <li key={e.id}>
+                <EventCard event={e} onOpen={onOpen} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {past.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-lg font-bold">{t("events.past")}</h2>
+          <ul className="mt-3 space-y-4">
+            {past.map((e) => (
+              <li key={e.id}>
+                <EventCard event={e} onOpen={onOpen} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  );
+}
+
+type EventRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  location: string | null;
+  event_date: string;
+  cover_image_url: string | null;
+  photo_count: number;
+};
+
+function EventCard({ event, onOpen }: { event: EventRow; onOpen: (id: string) => void }) {
+  const { t } = useI18n();
+  return (
+    <article className="card-elevated overflow-hidden">
+      {event.cover_image_url && (
+        <img
+          src={event.cover_image_url}
+          alt={event.title}
+          loading="lazy"
+          className="h-40 w-full object-cover"
+        />
+      )}
+      <div className="p-4">
+        {event.category && (
+          <span className="inline-block rounded-full bg-secondary px-3 py-1 text-xs font-bold uppercase tracking-wide text-secondary-foreground">
+            {event.category}
+          </span>
+        )}
+        <h3 className="mt-2 text-xl font-bold leading-snug">{event.title}</h3>
+        <p className="mt-2 flex items-center gap-2 text-base text-muted-foreground">
+          <CalendarDays aria-hidden className="size-5 shrink-0" />
+          {formatDate(event.event_date)}
+        </p>
+        {event.location && (
+          <p className="mt-1 flex items-center gap-2 text-base text-muted-foreground">
+            <MapPin aria-hidden className="size-5 shrink-0" />
+            {event.location}
+          </p>
+        )}
+        {event.description && <p className="mt-3 text-base">{event.description}</p>}
+        <button
+          type="button"
+          onClick={() => onOpen(event.id)}
+          className="btn-primary mt-4 flex w-full items-center justify-center gap-2"
+        >
+          <Images aria-hidden className="size-5" />
+          {t("events.viewGallery")}
+          {event.photo_count > 0 ? ` (${event.photo_count})` : ""}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function EventDetail({ eventId, onBack }: { eventId: string; onBack: () => void }) {
+  const { t } = useI18n();
+  const fetchEvent = useServerFn(getEvent);
+  const { data, isPending } = useQuery({
+    queryKey: ["event", eventId],
+    queryFn: () => fetchEvent({ data: { eventId } }),
+  });
+
+  return (
+    <AppShell title={t("nav.events")}>
+      <button
+        type="button"
+        onClick={onBack}
+        className="btn-secondary mb-4 flex items-center justify-center gap-2"
+      >
+        <ArrowLeft aria-hidden className="size-5" />
+        {t("events.back")}
+      </button>
+
+      {isPending || !data ? (
+        <p className="flex items-center gap-2 text-lg text-muted-foreground">
+          <Loader2 aria-hidden className="size-5 animate-spin" />
+          {t("common.loading")}
+        </p>
+      ) : (
+        <>
+          <h1 className="text-2xl font-bold leading-snug">{data.event.title}</h1>
+          <p className="mt-2 flex items-center gap-2 text-base text-muted-foreground">
+            <CalendarDays aria-hidden className="size-5 shrink-0" />
+            {formatDate(data.event.event_date)}
+          </p>
+          {data.event.location && (
+            <p className="mt-1 flex items-center gap-2 text-base text-muted-foreground">
+              <MapPin aria-hidden className="size-5 shrink-0" />
+              {data.event.location}
+            </p>
+          )}
+          {data.event.description && <p className="mt-3 text-lg">{data.event.description}</p>}
+
+          <h2 className="mt-6 text-lg font-bold">{t("events.gallery")}</h2>
+          {data.photos.length === 0 ? (
+            <p className="mt-2 text-base text-muted-foreground">{t("events.noPhotos")}</p>
+          ) : (
+            <ul className="mt-3 space-y-4">
+              {data.photos.map((p) => (
+                <li key={p.id} className="card-elevated overflow-hidden">
+                  <img
+                    src={p.image_url}
+                    alt={p.caption ?? data.event.title}
+                    loading="lazy"
+                    className="h-52 w-full object-cover"
+                  />
+                  {p.caption && <p className="p-3 text-base font-semibold">{p.caption}</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </AppShell>
   );
 }
