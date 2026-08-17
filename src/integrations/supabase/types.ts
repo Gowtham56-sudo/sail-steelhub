@@ -104,6 +104,80 @@ export type Database = {
         }
         Relationships: []
       }
+      event_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          event_id: string
+          id: string
+          image_url: string
+          order_index: number
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          image_url: string
+          order_index?: number
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          image_url?: string
+          order_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_photos_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          category: string | null
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          event_date: string
+          id: string
+          is_published: boolean
+          location: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          id?: string
+          is_published?: boolean
+          location?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          id?: string
+          is_published?: boolean
+          location?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       learning_modules: {
         Row: {
           category: string | null
