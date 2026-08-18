@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, LogOut } from "lucide-react";
+import { Loader2, LogOut, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/lib/i18n";
@@ -83,9 +83,20 @@ function ProfilePage() {
         </section>
       )}
 
+      {data?.roles.includes("admin") ? (
+        <Link
+          to="/admin"
+          className="mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+        >
+          <ShieldCheck aria-hidden className="size-5" />
+          Admin Panel
+        </Link>
+      ) : null}
+
       <section className="card-elevated mt-5 p-6">
         <LanguageSelector />
       </section>
+
 
       <button
         type="button"
