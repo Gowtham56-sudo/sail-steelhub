@@ -47,6 +47,51 @@ export type Database = {
         }
         Relationships: []
       }
+      circulars: {
+        Row: {
+          body: string | null
+          category: string
+          circular_number: string
+          created_at: string
+          department: string | null
+          file_url: string | null
+          id: string
+          is_published: boolean
+          issued_date: string
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          category?: string
+          circular_number: string
+          created_at?: string
+          department?: string | null
+          file_url?: string | null
+          id?: string
+          is_published?: boolean
+          issued_date?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          category?: string
+          circular_number?: string
+          created_at?: string
+          department?: string | null
+          file_url?: string | null
+          id?: string
+          is_published?: boolean
+          issued_date?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
           activated_at: string | null
