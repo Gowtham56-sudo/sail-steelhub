@@ -38,7 +38,7 @@ export const getAdminOverview = createServerFn({ method: "GET" })
     const admin = await requireAdmin(context);
 
     const count = async (table: string, filter?: (q: any) => any) => {
-      let q = admin.from(table).select("id", { count: "exact", head: true });
+      let q: any = (admin as any).from(table).select("id", { count: "exact", head: true });
       if (filter) q = filter(q);
       const { count: c } = await q;
       return c ?? 0;
@@ -167,9 +167,9 @@ export const adminSetEmployeeFlags = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!row) throw new Error("Employee not found");
 
-    const patch: Record<string, boolean> = {};
-    if (data.is_active !== undefined) patch['is_active'] = data.is_active;
-    if (data.is_admin !== undefined) patch['is_admin'] = data.is_admin;
+    const patch: { is_active?: boolean; is_admin?: boolean } = {};
+    if (data.is_active !== undefined) patch.is_active = data.is_active;
+    if (data.is_admin !== undefined) patch.is_admin = data.is_admin;
     if (Object.keys(patch).length === 0) return { ok: true };
 
     const { error } = await admin.from("employees").update(patch).eq("id", data.id);
