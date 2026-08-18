@@ -83,9 +83,20 @@ function ProfilePage() {
         </section>
       )}
 
+      {data?.roles.includes("admin") ? (
+        <Link
+          to="/admin"
+          className="mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+        >
+          <ShieldCheck aria-hidden className="size-5" />
+          Admin Panel
+        </Link>
+      ) : null}
+
       <section className="card-elevated mt-5 p-6">
         <LanguageSelector />
       </section>
+
 
       <button
         type="button"
