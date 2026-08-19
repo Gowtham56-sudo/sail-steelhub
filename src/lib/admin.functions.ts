@@ -286,3 +286,61 @@ export const adminCreateCircular = createServerFn({ method: "POST" })
     });
     return { id: row.id as string };
   });
+
+/** Today's recorded birthday / work-anniversary greetings, newest first. */
+export const adminGetCelebrations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const admin = await requireAdmin(context);
+    const { data } = await admin
+      .from("audit_logs")
+      .select("id, action, entity_id, employee_number, details, created_at")
+      .in("action", ["birthday_greeting", "work_anniversary"])
+      .order("created_at", { ascending: false })
+      .limit(50);
+    return { greetings: data ?? [] };
+  });
+
+/** Manually run the daily celebration scan (same logic as the scheduled job). */
+export const adminRunCelebrations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const admin = await requireAdmin(context);
+    const { data: roster } = await admin
+      .from("employees")
+      .select("id, employee_number, full_name, department, date_of_birth, date_of_joining")
+      .eq("is_active", true);
+
+    const now = new Date();
+    const today = `${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(
+      now.getUTCDate(),
+    ).padStart(2, "0")}`;
+
+    const rows: Record<string, unknown>[] = [];
+    for (const r of roster ?? []) {
+      if (r.date_of_birth?.slice(5) === today) {
+        rows.push({
+          action: "birthday_greeting",
+          entity: "employees",
+          entity_id: r.id,
+          employee_number: r.employee_number,
+          details: { name: r.full_name, department: r.department, date: today },
+        });
+      }
+      const years = r.date_of_joining
+        ? now.getUTCFullYear() - Number(r.date_of_joining.slice(0, 4))
+        : 0;
+      if (r.date_of_joining?.slice(5) === today && years > 0) {
+        rows.push({
+          action: "work_anniversary",
+          entity: "employees",
+          entity_id: r.id,
+          employee_number: r.employee_number,
+          details: { name: r.full_name, department: r.department, years, date: today },
+        });
+      }
+    }
+
+    if (rows.length > 0) await admin.from("audit_logs").insert(rows);
+    return { count: rows.length, date: today };
+  });

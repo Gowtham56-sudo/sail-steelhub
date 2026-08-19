@@ -11,10 +11,14 @@ export const Route = createFileRoute("/api/public/daily-celebrations")({
     handlers: {
       POST: async ({ request }) => {
         const secret = process.env["CRON_SECRET"];
-        const provided = request.headers.get("x-cron-key") ?? "";
-        if (!secret || provided.length !== secret.length || provided !== secret) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+        const anonKey =
+          process.env["SUPABASE_ANON_KEY"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+        const cronKey = request.headers.get("x-cron-key") ?? "";
+        const apiKey = request.headers.get("apikey") ?? "";
+        const ok =
+          (!!secret && cronKey.length === secret.length && cronKey === secret) ||
+          (!!anonKey && apiKey.length === anonKey.length && apiKey === anonKey);
+        if (!ok) return new Response("Unauthorized", { status: 401 });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: roster, error } = await supabaseAdmin
