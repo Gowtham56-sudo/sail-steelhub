@@ -137,6 +137,8 @@ function HomePage() {
               <p className="mt-2 text-base text-muted-foreground">{t("home.noAnniversaries")}</p>
             )}
           </section>
+
+          <InstallPrompt />
         </>
       )}
     </AppShell>
