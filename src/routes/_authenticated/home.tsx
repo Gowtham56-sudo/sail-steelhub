@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { useI18n } from "@/lib/i18n";
 import { getHomeFeed } from "@/lib/home.functions";
 import { getDailyQuote } from "@/lib/daily-quote";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export const Route = createFileRoute("/_authenticated/home")({
   head: () => ({
