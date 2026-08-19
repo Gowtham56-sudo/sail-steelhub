@@ -20,6 +20,7 @@ import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/h
 import { Route as AuthenticatedKnowledgeRouteImport } from './routes/_authenticated/knowledge'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as ApiAiChatRouteImport } from './routes/api/ai-chat'
+import { Route as ApiPublicDailyCelebrationsRouteImport } from './routes/api/public/daily-celebrations'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -75,6 +76,12 @@ const ApiAiChatRoute = ApiAiChatRouteImport.update({
   path: '/api/ai-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicDailyCelebrationsRoute =
+  ApiPublicDailyCelebrationsRouteImport.update({
+    id: '/api/public/daily-celebrations',
+    path: '/api/public/daily-celebrations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/api/ai-chat': typeof ApiAiChatRoute
+  '/api/public/daily-celebrations': typeof ApiPublicDailyCelebrationsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -99,6 +107,7 @@ export interface FileRoutesByTo {
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/api/ai-chat': typeof ApiAiChatRoute
+  '/api/public/daily-celebrations': typeof ApiPublicDailyCelebrationsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,6 +122,7 @@ export interface FileRoutesById {
   '/_authenticated/knowledge': typeof AuthenticatedKnowledgeRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/api/ai-chat': typeof ApiAiChatRoute
+  '/api/public/daily-celebrations': typeof ApiPublicDailyCelebrationsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/profile'
     | '/api/ai-chat'
+    | '/api/public/daily-celebrations'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/profile'
     | '/api/ai-chat'
+    | '/api/public/daily-celebrations'
   id:
     | '__root__'
     | '/'
@@ -152,6 +164,7 @@ export interface FileRouteTypes {
     | '/_authenticated/knowledge'
     | '/_authenticated/profile'
     | '/api/ai-chat'
+    | '/api/public/daily-celebrations'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -159,6 +172,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
+  ApiPublicDailyCelebrationsRoute: typeof ApiPublicDailyCelebrationsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -240,6 +254,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/daily-celebrations': {
+      id: '/api/public/daily-celebrations'
+      path: '/api/public/daily-celebrations'
+      fullPath: '/api/public/daily-celebrations'
+      preLoaderRoute: typeof ApiPublicDailyCelebrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -271,6 +292,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   ApiAiChatRoute: ApiAiChatRoute,
+  ApiPublicDailyCelebrationsRoute: ApiPublicDailyCelebrationsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

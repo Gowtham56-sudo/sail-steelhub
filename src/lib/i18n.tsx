@@ -130,6 +130,10 @@ const en: Dictionary = {
   "knowledge.history": "My Learning History",
   "knowledge.noHistory": "No quizzes completed yet.",
   "knowledge.completed": "Completed",
+  "install.title": "Install this app",
+  "install.body": "Add the SSP Knowledge Hub to your home screen for quick, app-like access.",
+  "install.button": "INSTALL APP",
+  "install.later": "Not now",
 };
 
 const ta: Dictionary = {
@@ -244,6 +248,10 @@ const ta: Dictionary = {
   "knowledge.history": "என் கற்றல் வரலாறு",
   "knowledge.noHistory": "இதுவரை வினா முடிக்கப்படவில்லை.",
   "knowledge.completed": "முடிந்தது",
+  "install.title": "இந்த ஆப்-ஐ நிறுவவும்",
+  "install.body": "விரைவான அணுகலுக்கு SSP அறிவு மையத்தை உங்கள் முகப்புத் திரையில் சேர்க்கவும்.",
+  "install.button": "ஆப்-ஐ நிறுவு",
+  "install.later": "இப்போது வேண்டாம்",
 };
 
 const hi: Dictionary = {
@@ -358,6 +366,10 @@ const hi: Dictionary = {
   "knowledge.history": "मेरा लर्निंग इतिहास",
   "knowledge.noHistory": "अभी तक कोई क्विज़ पूरी नहीं हुई।",
   "knowledge.completed": "पूर्ण",
+  "install.title": "यह ऐप इंस्टॉल करें",
+  "install.body": "तेज़ पहुँच के लिए SSP नॉलेज हब को अपनी होम स्क्रीन पर जोड़ें।",
+  "install.button": "ऐप इंस्टॉल करें",
+  "install.later": "अभी नहीं",
 };
 
 const dictionaries: Record<LanguageCode, Dictionary> = { en, ta, hi };
