@@ -374,6 +374,8 @@ const hi: Dictionary = {
   "install.body": "तेज़ पहुँच के लिए SSP नॉलेज हब को अपनी होम स्क्रीन पर जोड़ें।",
   "install.button": "ऐप इंस्टॉल करें",
   "install.later": "अभी नहीं",
+  "profile.adminBadge": "प्रशासक",
+  "profile.adminPanel": "प्रशासन पैनल",
 };
 
 const dictionaries: Record<LanguageCode, Dictionary> = { en, ta, hi };

@@ -69,7 +69,7 @@ function ProfilePage() {
           <h1 className="text-2xl font-bold">{p?.full_name ?? "—"}</h1>
           {data?.roles.includes("admin") ? (
             <p className="mt-2 inline-block rounded-full bg-accent/15 px-3 py-1 text-sm font-bold text-accent">
-              ADMINISTRATOR
+              {t("profile.adminBadge")}
             </p>
           ) : null}
           <dl className="mt-5 space-y-4">
@@ -89,7 +89,7 @@ function ProfilePage() {
           className="mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
         >
           <ShieldCheck aria-hidden className="size-5" />
-          Admin Panel
+          {t("profile.adminPanel")}
         </Link>
       ) : null}
 
