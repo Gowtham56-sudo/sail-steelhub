@@ -134,6 +134,8 @@ const en: Dictionary = {
   "install.body": "Add the SSP Knowledge Hub to your home screen for quick, app-like access.",
   "install.button": "INSTALL APP",
   "install.later": "Not now",
+  "profile.adminBadge": "ADMINISTRATOR",
+  "profile.adminPanel": "Admin Panel",
 };
 
 const ta: Dictionary = {
@@ -252,6 +254,8 @@ const ta: Dictionary = {
   "install.body": "விரைவான அணுகலுக்கு SSP அறிவு மையத்தை உங்கள் முகப்புத் திரையில் சேர்க்கவும்.",
   "install.button": "ஆப்-ஐ நிறுவு",
   "install.later": "இப்போது வேண்டாம்",
+  "profile.adminBadge": "நிர்வாகி",
+  "profile.adminPanel": "நிர்வாக குழு",
 };
 
 const hi: Dictionary = {
@@ -370,6 +374,8 @@ const hi: Dictionary = {
   "install.body": "तेज़ पहुँच के लिए SSP नॉलेज हब को अपनी होम स्क्रीन पर जोड़ें।",
   "install.button": "ऐप इंस्टॉल करें",
   "install.later": "अभी नहीं",
+  "profile.adminBadge": "प्रशासक",
+  "profile.adminPanel": "प्रशासन पैनल",
 };
 
 const dictionaries: Record<LanguageCode, Dictionary> = { en, ta, hi };
