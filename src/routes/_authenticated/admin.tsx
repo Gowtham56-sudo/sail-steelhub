@@ -544,8 +544,8 @@ function GreetingsTab() {
       </p>
       {run.data ? (
         <p className="mt-2 text-base font-semibold text-accent">
-          Scan complete — {run.data.inserted} greeting{run.data.inserted === 1 ? "" : "s"} recorded
-          for today.
+          Scan complete — {run.data.count} greeting{run.data.count === 1 ? "" : "s"} recorded for
+          today ({run.data.date}).
         </p>
       ) : null}
       {run.error ? (
@@ -579,12 +579,12 @@ function GreetingsTab() {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-base font-bold">
-                    {typeof d.name === "string" ? d.name : (g.employee_number ?? "Employee")}
-                    {typeof d.years === "number" ? ` — ${d.years} years` : ""}
+                    {typeof d["name"] === "string" ? d["name"] : (g.employee_number ?? "Employee")}
+                    {typeof d["years"] === "number" ? ` — ${d["years"]} years` : ""}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {isBirthday ? "Birthday" : "Work anniversary"}
-                    {typeof d.department === "string" ? ` · ${d.department}` : ""} ·{" "}
+                    {typeof d["department"] === "string" ? ` · ${d["department"]}` : ""} ·{" "}
                     {new Date(g.created_at).toLocaleString()}
                   </p>
                 </div>
