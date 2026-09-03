@@ -321,7 +321,7 @@ export const adminRunCelebrations = createServerFn({ method: "POST" })
       entity: string;
       entity_id: string;
       employee_number: string;
-      details: Record<string, unknown>;
+      details: Record<string, string | number | null>;
     }[] = [];
     for (const r of roster ?? []) {
       if (r.date_of_birth?.slice(5) === today) {
