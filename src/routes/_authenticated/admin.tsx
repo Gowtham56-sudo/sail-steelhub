@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, ShieldCheck, Search, Plus, Eye, EyeOff } from "lucide-react";
+import { Loader2, ShieldCheck, Search, Plus, Eye, EyeOff, Cake, PartyPopper, Play } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   getAdminOverview,
@@ -12,6 +12,8 @@ import {
   adminListContent,
   adminSetPublished,
   adminCreateCircular,
+  adminGetCelebrations,
+  adminRunCelebrations,
 } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -35,12 +37,13 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-type Tab = "overview" | "employees" | "content" | "audit";
+type Tab = "overview" | "employees" | "content" | "greetings" | "audit";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "employees", label: "Employees" },
   { id: "content", label: "Content" },
+  { id: "greetings", label: "Greetings" },
   { id: "audit", label: "Audit" },
 ];
 
@@ -60,7 +63,7 @@ function AdminPage() {
       <div
         role="tablist"
         aria-label="Admin sections"
-        className="mt-4 grid grid-cols-4 gap-1 rounded-xl bg-muted p-1"
+        className="mt-4 grid grid-cols-5 gap-1 rounded-xl bg-muted p-1"
       >
         {TABS.map((x) => (
           <button
@@ -82,6 +85,7 @@ function AdminPage() {
         {tab === "overview" ? <OverviewTab /> : null}
         {tab === "employees" ? <EmployeesTab /> : null}
         {tab === "content" ? <ContentTab /> : null}
+        {tab === "greetings" ? <GreetingsTab /> : null}
         {tab === "audit" ? <AuditTab /> : null}
       </div>
     </AppShell>
@@ -498,6 +502,97 @@ function ContentTab() {
           category: m.category,
         }))}
       />
+    </div>
+  );
+}
+
+function GreetingsTab() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminGetCelebrations);
+  const runFn = useServerFn(adminRunCelebrations);
+
+  const { data, isPending, error } = useQuery({
+    queryKey: ["admin-greetings"],
+    queryFn: () => listFn(),
+  });
+
+  const run = useMutation({
+    mutationFn: () => runFn(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-greetings"] });
+      qc.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
+  });
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => run.mutate()}
+        disabled={run.isPending}
+        className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+      >
+        {run.isPending ? (
+          <Loader2 aria-hidden className="size-5 animate-spin" />
+        ) : (
+          <Play aria-hidden className="size-5" />
+        )}
+        Run today's greeting scan now
+      </button>
+      <p className="mt-2 text-sm text-muted-foreground">
+        The backend also runs this automatically every day at 9:00 AM India time.
+      </p>
+      {run.data ? (
+        <p className="mt-2 text-base font-semibold text-accent">
+          Scan complete — {run.data.inserted} greeting{run.data.inserted === 1 ? "" : "s"} recorded
+          for today.
+        </p>
+      ) : null}
+      {run.error ? (
+        <p className="mt-2 text-base font-semibold text-destructive">{run.error.message}</p>
+      ) : null}
+
+      {isPending ? (
+        <div className="mt-4">
+          <Spinner />
+        </div>
+      ) : error ? (
+        <p className="mt-4 text-lg text-destructive">You do not have admin access.</p>
+      ) : !data!.greetings.length ? (
+        <p className="mt-4 text-lg text-muted-foreground">
+          No greetings recorded yet. Use the button above or wait for the daily 9:00 AM scan.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {data!.greetings.map((g) => {
+            const d =
+              g.details && typeof g.details === "object" && !Array.isArray(g.details)
+                ? (g.details as Record<string, unknown>)
+                : {};
+            const isBirthday = g.action === "birthday_greeting";
+            return (
+              <li key={g.id} className="card-elevated flex items-center gap-3 p-4">
+                {isBirthday ? (
+                  <Cake aria-hidden className="size-7 shrink-0 text-accent" />
+                ) : (
+                  <PartyPopper aria-hidden className="size-7 shrink-0 text-primary" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-bold">
+                    {typeof d.name === "string" ? d.name : (g.employee_number ?? "Employee")}
+                    {typeof d.years === "number" ? ` — ${d.years} years` : ""}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {isBirthday ? "Birthday" : "Work anniversary"}
+                    {typeof d.department === "string" ? ` · ${d.department}` : ""} ·{" "}
+                    {new Date(g.created_at).toLocaleString()}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
