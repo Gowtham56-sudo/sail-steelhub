@@ -316,7 +316,13 @@ export const adminRunCelebrations = createServerFn({ method: "POST" })
       now.getUTCDate(),
     ).padStart(2, "0")}`;
 
-    const rows: Record<string, unknown>[] = [];
+    const rows: {
+      action: string;
+      entity: string;
+      entity_id: string;
+      employee_number: string;
+      details: Record<string, string | number | null>;
+    }[] = [];
     for (const r of roster ?? []) {
       if (r.date_of_birth?.slice(5) === today) {
         rows.push({
