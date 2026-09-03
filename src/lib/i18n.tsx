@@ -134,6 +134,8 @@ const en: Dictionary = {
   "install.body": "Add the SSP Knowledge Hub to your home screen for quick, app-like access.",
   "install.button": "INSTALL APP",
   "install.later": "Not now",
+  "profile.adminBadge": "ADMINISTRATOR",
+  "profile.adminPanel": "Admin Panel",
 };
 
 const ta: Dictionary = {
