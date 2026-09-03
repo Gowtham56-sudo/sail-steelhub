@@ -254,6 +254,8 @@ const ta: Dictionary = {
   "install.body": "விரைவான அணுகலுக்கு SSP அறிவு மையத்தை உங்கள் முகப்புத் திரையில் சேர்க்கவும்.",
   "install.button": "ஆப்-ஐ நிறுவு",
   "install.later": "இப்போது வேண்டாம்",
+  "profile.adminBadge": "நிர்வாகி",
+  "profile.adminPanel": "நிர்வாக குழு",
 };
 
 const hi: Dictionary = {
