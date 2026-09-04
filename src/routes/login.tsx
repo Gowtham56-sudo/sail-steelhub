@@ -6,7 +6,7 @@ import { SailLogo } from "@/components/SailLogo";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { activateAccount, getAccountStatus } from "@/lib/employee-auth.functions";
+import { activateAccount, getAccountStatus, getMyProfile } from "@/lib/employee-auth.functions";
 import {
   employeeNumberToAuthEmail,
   normalizeEmployeeNumber,
@@ -37,7 +37,9 @@ function LoginPage() {
   const navigate = useNavigate();
   const checkStatus = useServerFn(getAccountStatus);
   const activate = useServerFn(activateAccount);
+  const loadProfile = useServerFn(getMyProfile);
 
+  const [adminMode, setAdminMode] = useState(false);
   const [step, setStep] = useState<"login" | "activate">("login");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [password, setPassword] = useState("");
@@ -68,6 +70,16 @@ function LoginPage() {
     try {
       const signInError = await signInWith(password);
       if (!signInError) {
+        if (adminMode) {
+          const me = await loadProfile();
+          if (!me.roles.includes("admin")) {
+            await supabase.auth.signOut();
+            setError("This account does not have administrator access.");
+            return;
+          }
+          navigate({ to: "/admin", replace: true });
+          return;
+        }
         navigate({ to: "/home", replace: true });
         return;
       }
@@ -143,8 +155,16 @@ function LoginPage() {
         {step === "login" ? (
         <section className="card-elevated animate-rise p-6">
 
+          {adminMode ? (
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold tracking-wide text-primary">
+              <ShieldCheck aria-hidden className="size-4" />
+              {t("login.adminLogin")}
+            </p>
+          ) : null}
           <h2 className="text-2xl font-bold">{t("login.title")}</h2>
-          <p className="mt-1 text-base text-muted-foreground">{t("login.subtitle")}</p>
+          <p className="mt-1 text-base text-muted-foreground">
+            {adminMode ? t("login.adminSubtitle") : t("login.subtitle")}
+          </p>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-5" noValidate>
             <div>
@@ -340,10 +360,20 @@ function LoginPage() {
 
         <button
           type="button"
-          className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-base font-semibold text-foreground"
+          aria-pressed={adminMode}
+          onClick={() => {
+            setAdminMode((v) => !v);
+            setStep("login");
+            setError(null);
+          }}
+          className={`mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border text-base font-semibold ${
+            adminMode
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-border bg-card text-foreground"
+          }`}
         >
           <ShieldCheck aria-hidden className="size-5 text-primary" />
-          {t("login.adminLogin")}
+          {adminMode ? t("login.employeeLogin") : t("login.adminLogin")}
         </button>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">{t("login.help")}</p>
