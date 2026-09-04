@@ -352,10 +352,20 @@ function LoginPage() {
 
         <button
           type="button"
-          className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-base font-semibold text-foreground"
+          aria-pressed={adminMode}
+          onClick={() => {
+            setAdminMode((v) => !v);
+            setStep("login");
+            setError(null);
+          }}
+          className={`mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border text-base font-semibold ${
+            adminMode
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-border bg-card text-foreground"
+          }`}
         >
           <ShieldCheck aria-hidden className="size-5 text-primary" />
-          {t("login.adminLogin")}
+          {adminMode ? t("login.employeeLogin") : t("login.adminLogin")}
         </button>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">{t("login.help")}</p>
