@@ -155,8 +155,16 @@ function LoginPage() {
         {step === "login" ? (
         <section className="card-elevated animate-rise p-6">
 
+          {adminMode ? (
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold tracking-wide text-primary">
+              <ShieldCheck aria-hidden className="size-4" />
+              {t("login.adminLogin")}
+            </p>
+          ) : null}
           <h2 className="text-2xl font-bold">{t("login.title")}</h2>
-          <p className="mt-1 text-base text-muted-foreground">{t("login.subtitle")}</p>
+          <p className="mt-1 text-base text-muted-foreground">
+            {adminMode ? t("login.adminSubtitle") : t("login.subtitle")}
+          </p>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-5" noValidate>
             <div>
