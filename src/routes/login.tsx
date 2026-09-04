@@ -6,7 +6,7 @@ import { SailLogo } from "@/components/SailLogo";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { activateAccount, getAccountStatus } from "@/lib/employee-auth.functions";
+import { activateAccount, getAccountStatus, getMyProfile } from "@/lib/employee-auth.functions";
 import {
   employeeNumberToAuthEmail,
   normalizeEmployeeNumber,
