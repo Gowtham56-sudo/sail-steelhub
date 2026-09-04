@@ -37,7 +37,9 @@ function LoginPage() {
   const navigate = useNavigate();
   const checkStatus = useServerFn(getAccountStatus);
   const activate = useServerFn(activateAccount);
+  const loadProfile = useServerFn(getMyProfile);
 
+  const [adminMode, setAdminMode] = useState(false);
   const [step, setStep] = useState<"login" | "activate">("login");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [password, setPassword] = useState("");
