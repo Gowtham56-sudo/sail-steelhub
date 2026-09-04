@@ -70,6 +70,16 @@ function LoginPage() {
     try {
       const signInError = await signInWith(password);
       if (!signInError) {
+        if (adminMode) {
+          const me = await loadProfile();
+          if (!me.roles.includes("admin")) {
+            await supabase.auth.signOut();
+            setError("This account does not have administrator access.");
+            return;
+          }
+          navigate({ to: "/admin", replace: true });
+          return;
+        }
         navigate({ to: "/home", replace: true });
         return;
       }
