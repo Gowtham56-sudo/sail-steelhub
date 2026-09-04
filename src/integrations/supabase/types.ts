@@ -223,6 +223,45 @@ export type Database = {
         }
         Relationships: []
       }
+      forms: {
+        Row: {
+          category: string
+          created_at: string
+          department: string | null
+          description: string | null
+          file_name: string | null
+          file_url: string
+          id: string
+          is_published: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          file_name?: string | null
+          file_url: string
+          id?: string
+          is_published?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          file_name?: string | null
+          file_url?: string
+          id?: string
+          is_published?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       learning_modules: {
         Row: {
           category: string | null
