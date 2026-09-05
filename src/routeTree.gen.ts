@@ -16,6 +16,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as AuthenticatedCircularsRouteImport } from './routes/_authenticated/circulars'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
+import { Route as AuthenticatedFormsRouteImport } from './routes/_authenticated/forms'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedKnowledgeRouteImport } from './routes/_authenticated/knowledge'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
@@ -56,6 +57,11 @@ const AuthenticatedEventsRoute = AuthenticatedEventsRouteImport.update({
   path: '/events',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFormsRoute = AuthenticatedFormsRouteImport.update({
+  id: '/forms',
+  path: '/forms',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/ai': typeof AuthenticatedAiRoute
   '/circulars': typeof AuthenticatedCircularsRoute
   '/events': typeof AuthenticatedEventsRoute
+  '/forms': typeof AuthenticatedFormsRoute
   '/home': typeof AuthenticatedHomeRoute
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/ai': typeof AuthenticatedAiRoute
   '/circulars': typeof AuthenticatedCircularsRoute
   '/events': typeof AuthenticatedEventsRoute
+  '/forms': typeof AuthenticatedFormsRoute
   '/home': typeof AuthenticatedHomeRoute
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/circulars': typeof AuthenticatedCircularsRoute
   '/_authenticated/events': typeof AuthenticatedEventsRoute
+  '/_authenticated/forms': typeof AuthenticatedFormsRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/knowledge': typeof AuthenticatedKnowledgeRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/ai'
     | '/circulars'
     | '/events'
+    | '/forms'
     | '/home'
     | '/knowledge'
     | '/profile'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/ai'
     | '/circulars'
     | '/events'
+    | '/forms'
     | '/home'
     | '/knowledge'
     | '/profile'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ai'
     | '/_authenticated/circulars'
     | '/_authenticated/events'
+    | '/_authenticated/forms'
     | '/_authenticated/home'
     | '/_authenticated/knowledge'
     | '/_authenticated/profile'
@@ -226,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEventsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/forms': {
+      id: '/_authenticated/forms'
+      path: '/forms'
+      fullPath: '/forms'
+      preLoaderRoute: typeof AuthenticatedFormsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/home': {
       id: '/_authenticated/home'
       path: '/home'
@@ -269,6 +288,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAiRoute: typeof AuthenticatedAiRoute
   AuthenticatedCircularsRoute: typeof AuthenticatedCircularsRoute
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
+  AuthenticatedFormsRoute: typeof AuthenticatedFormsRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedKnowledgeRoute: typeof AuthenticatedKnowledgeRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
@@ -279,6 +299,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAiRoute: AuthenticatedAiRoute,
   AuthenticatedCircularsRoute: AuthenticatedCircularsRoute,
   AuthenticatedEventsRoute: AuthenticatedEventsRoute,
+  AuthenticatedFormsRoute: AuthenticatedFormsRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedKnowledgeRoute: AuthenticatedKnowledgeRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,

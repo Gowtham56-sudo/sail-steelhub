@@ -194,7 +194,7 @@ export const adminSetEmployeeFlags = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const CONTENT_TABLES = ["circulars", "events", "learning_modules"] as const;
+const CONTENT_TABLES = ["circulars", "events", "learning_modules", "forms"] as const;
 type ContentTable = (typeof CONTENT_TABLES)[number];
 
 /** All content rows (published and drafts) for the admin content manager. */
@@ -349,4 +349,85 @@ export const adminRunCelebrations = createServerFn({ method: "POST" })
 
     if (rows.length > 0) await admin.from("audit_logs").insert(rows);
     return { count: rows.length, date: today };
+  });
+
+/** All forms (published and hidden) for the admin forms manager. */
+export const adminListForms = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const admin = await requireAdmin(context);
+    const { data } = await admin
+      .from("forms")
+      .select("id, title, description, category, department, file_name, is_published, created_at")
+      .order("created_at", { ascending: false });
+    return { forms: data ?? [] };
+  });
+
+/** Signed upload slot so the browser can send the file straight to storage. */
+export const adminCreateFormUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { fileName: string }) =>
+    z.object({ fileName: z.string().min(1).max(200) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${crypto.randomUUID()}-${safe}`;
+    const { data: signed, error } = await admin.storage.from("forms").createSignedUploadUrl(path);
+    if (error || !signed) throw new Error("Unable to prepare upload");
+    return { path, token: signed.token };
+  });
+
+/** Save a form record once its file has been uploaded. */
+export const adminCreateForm = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        title: z.string().min(3).max(200),
+        description: z.string().max(1000).optional(),
+        category: z.string().min(1).max(60),
+        department: z.string().max(80).optional(),
+        file_url: z.string().min(1).max(400),
+        file_name: z.string().min(1).max(200),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const { data: row, error } = await admin
+      .from("forms")
+      .insert({
+        title: data.title.trim(),
+        description: data.description || null,
+        category: data.category,
+        department: data.department || null,
+        file_url: data.file_url,
+        file_name: data.file_name,
+        is_published: true,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    await logAction(admin, context.userId, "form.create", "forms", row.id, { title: data.title });
+    return { id: row.id as string };
+  });
+
+/** Remove a form and its stored file. */
+export const adminDeleteForm = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const { data: row } = await admin
+      .from("forms")
+      .select("id, file_url, title")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Form not found");
+    await admin.storage.from("forms").remove([row.file_url]);
+    const { error } = await admin.from("forms").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    await logAction(admin, context.userId, "form.delete", "forms", data.id, { title: row.title });
+    return { ok: true };
   });

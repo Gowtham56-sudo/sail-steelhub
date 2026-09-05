@@ -2,7 +2,18 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, ShieldCheck, Search, Plus, Eye, EyeOff, Cake, PartyPopper, Play } from "lucide-react";
+import {
+  Loader2,
+  ShieldCheck,
+  Search,
+  Plus,
+  Eye,
+  EyeOff,
+  Cake,
+  PartyPopper,
+  Play,
+  Trash2,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   getAdminOverview,
@@ -14,7 +25,12 @@ import {
   adminCreateCircular,
   adminGetCelebrations,
   adminRunCelebrations,
+  adminListForms,
+  adminCreateFormUpload,
+  adminCreateForm,
+  adminDeleteForm,
 } from "@/lib/admin.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -37,12 +53,13 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-type Tab = "overview" | "employees" | "content" | "greetings" | "audit";
+type Tab = "overview" | "employees" | "content" | "forms" | "greetings" | "audit";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "employees", label: "Employees" },
   { id: "content", label: "Content" },
+  { id: "forms", label: "Forms" },
   { id: "greetings", label: "Greetings" },
   { id: "audit", label: "Audit" },
 ];
@@ -63,7 +80,7 @@ function AdminPage() {
       <div
         role="tablist"
         aria-label="Admin sections"
-        className="mt-4 grid grid-cols-5 gap-1 rounded-xl bg-muted p-1"
+        className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1"
       >
         {TABS.map((x) => (
           <button
@@ -85,6 +102,7 @@ function AdminPage() {
         {tab === "overview" ? <OverviewTab /> : null}
         {tab === "employees" ? <EmployeesTab /> : null}
         {tab === "content" ? <ContentTab /> : null}
+        {tab === "forms" ? <FormsTab /> : null}
         {tab === "greetings" ? <GreetingsTab /> : null}
         {tab === "audit" ? <AuditTab /> : null}
       </div>
@@ -619,5 +637,152 @@ function AuditTab() {
         </li>
       ))}
     </ul>
+  );
+}
+
+function FormsTab() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListForms);
+  const uploadFn = useServerFn(adminCreateFormUpload);
+  const createFn = useServerFn(adminCreateForm);
+  const deleteFn = useServerFn(adminDeleteForm);
+
+  const { data, isPending, error } = useQuery({
+    queryKey: ["admin-forms"],
+    queryFn: () => listFn(),
+  });
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("General");
+  const [department, setDepartment] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file || title.trim().length < 3) {
+      setMessage("Add a title and choose a file first.");
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const slot = await uploadFn({ data: { fileName: file.name } });
+      const { error: upErr } = await supabase.storage
+        .from("forms")
+        .uploadToSignedUrl(slot.path, slot.token, file);
+      if (upErr) throw new Error(upErr.message);
+      await createFn({
+        data: {
+          title: title.trim(),
+          description: description.trim() || undefined,
+          category: category.trim() || "General",
+          department: department.trim() || undefined,
+          file_url: slot.path,
+          file_name: file.name,
+        },
+      });
+      setTitle("");
+      setDescription("");
+      setDepartment("");
+      setFile(null);
+      setMessage("Form published for employees.");
+      qc.invalidateQueries({ queryKey: ["admin-forms"] });
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-forms"] }),
+  });
+
+  return (
+    <div>
+      <form onSubmit={submit} className="card-elevated space-y-3 p-4">
+        <h2 className="text-lg font-bold">Upload a new form</h2>
+        <input
+          className={inputClass}
+          placeholder="Form title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <input
+          className={inputClass}
+          placeholder="Short description (optional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            className={inputClass}
+            placeholder="Category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
+          <input
+            className={inputClass}
+            placeholder="Department (optional)"
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+          />
+        </div>
+        <input
+          type="file"
+          aria-label="Form file"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="w-full text-base"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+        >
+          {busy ? (
+            <Loader2 aria-hidden className="size-5 animate-spin" />
+          ) : (
+            <Plus aria-hidden className="size-5" />
+          )}
+          Publish form
+        </button>
+        {message ? <p className="text-base font-semibold text-accent">{message}</p> : null}
+      </form>
+
+      {isPending ? (
+        <div className="mt-4">
+          <Spinner />
+        </div>
+      ) : error ? (
+        <p className="mt-4 text-lg text-destructive">You do not have admin access.</p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {(data?.forms ?? []).map((f) => (
+            <li key={f.id} className="card-elevated p-4">
+              <p className="text-lg font-bold">{f.title}</p>
+              <p className="text-sm text-muted-foreground">
+                {[f.category, f.department, f.file_name].filter(Boolean).join(" · ")}
+              </p>
+              <button
+                type="button"
+                onClick={() => remove.mutate(f.id)}
+                disabled={remove.isPending}
+                className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-destructive text-base font-bold text-destructive"
+              >
+                <Trash2 aria-hidden className="size-5" />
+                Delete form
+              </button>
+            </li>
+          ))}
+          {(data?.forms ?? []).length === 0 ? (
+            <p className="text-lg text-muted-foreground">No forms uploaded yet.</p>
+          ) : null}
+        </ul>
+      )}
+    </div>
   );
 }

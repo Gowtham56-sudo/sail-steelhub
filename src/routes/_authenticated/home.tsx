@@ -1,7 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Cake, Award, BookOpen, Bot, CalendarDays, FileText, Quote } from "lucide-react";
+import {
+  Loader2,
+  Cake,
+  Award,
+  BookOpen,
+  Bot,
+  CalendarDays,
+  FileText,
+  FileSpreadsheet,
+  Quote,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useI18n } from "@/lib/i18n";
 import { getHomeFeed } from "@/lib/home.functions";
@@ -34,6 +44,7 @@ const QUICK_ACTIONS = [
   { to: "/ai", icon: Bot, key: "nav.ai" },
   { to: "/events", icon: CalendarDays, key: "nav.events" },
   { to: "/circulars", icon: FileText, key: "nav.circulars" },
+  { to: "/forms", icon: FileSpreadsheet, key: "nav.forms" },
 ] as const;
 
 function HomePage() {
