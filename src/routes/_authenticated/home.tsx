@@ -112,6 +112,7 @@ function HomePage() {
                 </div>
                 <Link
                   to="/events"
+                  search={{ event: undefined }}
                   className="flex min-h-12 shrink-0 items-center gap-1 font-bold text-primary"
                 >
                   {t("home.viewAll")}
@@ -162,6 +163,7 @@ function HomePage() {
                 <Link
                   key={to}
                   to={to}
+                  search={to === "/events" ? { event: undefined } : undefined}
                   className="card-elevated flex min-h-24 flex-col items-center justify-center gap-2 p-4 text-center text-base font-bold"
                 >
                   <Icon aria-hidden className="size-7 text-primary" />

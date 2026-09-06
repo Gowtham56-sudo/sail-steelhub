@@ -9,7 +9,7 @@ import { getEvent, getEvents } from "@/lib/events.functions";
 
 export const Route = createFileRoute("/_authenticated/events")({
   validateSearch: (search: Record<string, unknown>) => ({
-    event: typeof search.event === "string" ? search.event : undefined,
+    event: typeof search["event"] === "string" ? search["event"] : undefined,
   }),
   head: () => ({
     meta: [
@@ -48,7 +48,7 @@ function EventsPage() {
 
   const closeEvent = () => {
     setOpenId(null);
-    void navigate({ search: {}, replace: true });
+    void navigate({ search: { event: undefined }, replace: true });
   };
 
   if (openId) {
