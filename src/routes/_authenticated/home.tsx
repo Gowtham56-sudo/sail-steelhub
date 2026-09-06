@@ -11,12 +11,15 @@ import {
   FileText,
   FileSpreadsheet,
   Quote,
+  ArrowRight,
+  Images,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useI18n } from "@/lib/i18n";
 import { getHomeFeed } from "@/lib/home.functions";
 import { getDailyQuote } from "@/lib/daily-quote";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { getEvents } from "@/lib/events.functions";
 
 export const Route = createFileRoute("/_authenticated/home")({
   head: () => ({
@@ -40,24 +43,32 @@ export const Route = createFileRoute("/_authenticated/home")({
 });
 
 const QUICK_ACTIONS = [
-  { to: "/knowledge", icon: BookOpen, key: "nav.knowledge" },
-  { to: "/ai", icon: Bot, key: "nav.ai" },
-  { to: "/events", icon: CalendarDays, key: "nav.events" },
-  { to: "/circulars", icon: FileText, key: "nav.circulars" },
-  { to: "/forms", icon: FileSpreadsheet, key: "nav.forms" },
+  { to: "/knowledge", icon: BookOpen, key: "nav.knowledge", search: {} },
+  { to: "/ai", icon: Bot, key: "nav.ai", search: {} },
+  { to: "/events", icon: CalendarDays, key: "nav.events", search: { event: undefined } },
+  { to: "/circulars", icon: FileText, key: "nav.circulars", search: {} },
+  { to: "/forms", icon: FileSpreadsheet, key: "nav.forms", search: {} },
 ] as const;
 
 function HomePage() {
   const { t, lang } = useI18n();
   const fetchFeed = useServerFn(getHomeFeed);
+  const fetchEvents = useServerFn(getEvents);
 
   const { data, isPending } = useQuery({
     queryKey: ["home-feed"],
     queryFn: () => fetchFeed(),
   });
+  const { data: eventData } = useQuery({
+    queryKey: ["events"],
+    queryFn: () => fetchEvents(),
+  });
 
   const quote = getDailyQuote();
   const profile = data?.profile;
+  const featuredEvents = (eventData?.events ?? [])
+    .filter((event) => event.cover_image_url)
+    .slice(0, 3);
 
   return (
     <AppShell title={t("app.shortName")}>
@@ -90,13 +101,69 @@ function HomePage() {
             <p className="mt-3 text-sm text-primary-foreground/80">— {quote.author}</p>
           </section>
 
+          {featuredEvents.length > 0 && (
+            <section className="mt-6" aria-labelledby="event-highlights-title">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <h2 id="event-highlights-title" className="text-xl font-bold">
+                    {t("home.eventHighlights")}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("home.eventHighlightsSubtitle")}</p>
+                </div>
+                <Link
+                  to="/events"
+                  search={{ event: undefined }}
+                  className="flex min-h-12 shrink-0 items-center gap-1 font-bold text-primary"
+                >
+                  {t("home.viewAll")}
+                  <ArrowRight aria-hidden className="size-5" />
+                </Link>
+              </div>
+
+              <div className="-mx-4 mt-3 flex snap-x gap-4 overflow-x-auto px-4 pb-2">
+                {featuredEvents.map((event) => (
+                  <Link
+                    key={event.id}
+                    to="/events"
+                    search={{ event: event.id }}
+                    className="card-elevated group w-[82%] shrink-0 snap-center overflow-hidden sm:w-72"
+                    aria-label={`${t("events.viewGallery")}: ${event.title}`}
+                  >
+                    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                      <img
+                        src={event.cover_image_url ?? ""}
+                        alt={event.title}
+                        loading="lazy"
+                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/90 to-transparent px-4 pb-4 pt-12 text-background">
+                        <p className="text-lg font-bold leading-snug">{event.title}</p>
+                      </div>
+                    </div>
+                    <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-3">
+                      <span className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                        <Images aria-hidden className="size-5 text-accent" />
+                        {event.photo_count} {t("events.photos")}
+                      </span>
+                      <span className="flex items-center gap-1 font-bold text-primary">
+                        {t("home.openEvent")}
+                        <ArrowRight aria-hidden className="size-5" />
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="mt-5">
             <h2 className="text-lg font-bold">{t("home.quickActions")}</h2>
             <div className="mt-3 grid grid-cols-2 gap-3">
-              {QUICK_ACTIONS.map(({ to, icon: Icon, key }) => (
+              {QUICK_ACTIONS.map(({ to, icon: Icon, key, search }) => (
                 <Link
                   key={to}
                   to={to}
+                  search={search}
                   className="card-elevated flex min-h-24 flex-col items-center justify-center gap-2 p-4 text-center text-base font-bold"
                 >
                   <Icon aria-hidden className="size-7 text-primary" />

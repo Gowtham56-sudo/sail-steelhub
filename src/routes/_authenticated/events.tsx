@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, CalendarDays, Images, Loader2, MapPin } from "lucide-react";
@@ -8,6 +8,9 @@ import { useI18n } from "@/lib/i18n";
 import { getEvent, getEvents } from "@/lib/events.functions";
 
 export const Route = createFileRoute("/_authenticated/events")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    event: typeof search["event"] === "string" ? search["event"] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Events — SAIL Salem Steel Plant Knowledge Hub" },
@@ -34,15 +37,27 @@ function formatDate(value: string) {
 
 function EventsPage() {
   const { t } = useI18n();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/events" });
+  const [openId, setOpenId] = useState<string | null>(search.event ?? null);
+
+  const openEvent = (eventId: string) => {
+    setOpenId(eventId);
+    void navigate({ search: { event: eventId }, replace: true });
+  };
+
+  const closeEvent = () => {
+    setOpenId(null);
+    void navigate({ search: { event: undefined }, replace: true });
+  };
 
   if (openId) {
-    return <EventDetail eventId={openId} onBack={() => setOpenId(null)} />;
+    return <EventDetail eventId={openId} onBack={closeEvent} />;
   }
 
   return (
     <AppShell title={t("nav.events")}>
-      <EventList onOpen={setOpenId} />
+      <EventList onOpen={openEvent} />
     </AppShell>
   );
 }
