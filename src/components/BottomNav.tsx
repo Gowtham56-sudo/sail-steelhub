@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Home, BookOpen, Bot, CalendarDays, FileText, User } from "lucide-react";
+import { Home, BookOpen, CalendarDays, FileSpreadsheet, FileText, User } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
 const ITEMS = [
   { to: "/home", icon: Home, key: "nav.home" },
   { to: "/knowledge", icon: BookOpen, key: "nav.knowledge" },
-  { to: "/ai", icon: Bot, key: "nav.ai" },
+  { to: "/forms", icon: FileSpreadsheet, key: "nav.forms" },
   { to: "/events", icon: CalendarDays, key: "nav.events" },
   { to: "/circulars", icon: FileText, key: "nav.circulars" },
   { to: "/profile", icon: User, key: "nav.profile" },
