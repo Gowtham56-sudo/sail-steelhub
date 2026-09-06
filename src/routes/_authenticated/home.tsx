@@ -43,11 +43,11 @@ export const Route = createFileRoute("/_authenticated/home")({
 });
 
 const QUICK_ACTIONS = [
-  { to: "/knowledge", icon: BookOpen, key: "nav.knowledge" },
-  { to: "/ai", icon: Bot, key: "nav.ai" },
-  { to: "/events", icon: CalendarDays, key: "nav.events" },
-  { to: "/circulars", icon: FileText, key: "nav.circulars" },
-  { to: "/forms", icon: FileSpreadsheet, key: "nav.forms" },
+  { to: "/knowledge", icon: BookOpen, key: "nav.knowledge", search: {} },
+  { to: "/ai", icon: Bot, key: "nav.ai", search: {} },
+  { to: "/events", icon: CalendarDays, key: "nav.events", search: { event: undefined } },
+  { to: "/circulars", icon: FileText, key: "nav.circulars", search: {} },
+  { to: "/forms", icon: FileSpreadsheet, key: "nav.forms", search: {} },
 ] as const;
 
 function HomePage() {
@@ -159,11 +159,11 @@ function HomePage() {
           <section className="mt-5">
             <h2 className="text-lg font-bold">{t("home.quickActions")}</h2>
             <div className="mt-3 grid grid-cols-2 gap-3">
-              {QUICK_ACTIONS.map(({ to, icon: Icon, key }) => (
+              {QUICK_ACTIONS.map(({ to, icon: Icon, key, search }) => (
                 <Link
                   key={to}
                   to={to}
-                  search={to === "/events" ? { event: undefined } : undefined}
+                  search={search}
                   className="card-elevated flex min-h-24 flex-col items-center justify-center gap-2 p-4 text-center text-base font-bold"
                 >
                   <Icon aria-hidden className="size-7 text-primary" />
