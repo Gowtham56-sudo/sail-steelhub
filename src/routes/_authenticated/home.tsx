@@ -120,34 +120,34 @@ function HomePage() {
                 </Link>
               </div>
 
-              <div className="-mx-4 mt-3 flex snap-x gap-4 overflow-x-auto px-4 pb-2">
+              <div className="-mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
                 {featuredEvents.map((event) => (
                   <Link
                     key={event.id}
                     to="/events"
                     search={{ event: event.id }}
-                    className="card-elevated group w-[82%] shrink-0 snap-center overflow-hidden sm:w-72"
+                    className="card-elevated group w-44 shrink-0 snap-center overflow-hidden"
                     aria-label={`${t("events.viewGallery")}: ${event.title}`}
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                    <div className="relative aspect-square overflow-hidden bg-muted">
                       <img
                         src={event.cover_image_url ?? ""}
                         alt={event.title}
                         loading="lazy"
                         className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/90 to-transparent px-4 pb-4 pt-12 text-background">
-                        <p className="text-lg font-bold leading-snug">{event.title}</p>
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/90 to-transparent px-3 pb-3 pt-10 text-background">
+                        <p className="text-sm font-bold leading-tight line-clamp-2">{event.title}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-3">
-                      <span className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                        <Images aria-hidden className="size-5 text-accent" />
+                    <div className="flex min-h-12 items-center justify-between gap-2 px-3 py-2">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                        <Images aria-hidden className="size-4 text-accent" />
                         {event.photo_count} {t("events.photos")}
                       </span>
-                      <span className="flex items-center gap-1 font-bold text-primary">
+                      <span className="flex items-center gap-0.5 text-sm font-bold text-primary">
                         {t("home.openEvent")}
-                        <ArrowRight aria-hidden className="size-5" />
+                        <ArrowRight aria-hidden className="size-4" />
                       </span>
                     </div>
                   </Link>
