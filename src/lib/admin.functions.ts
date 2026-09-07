@@ -431,3 +431,205 @@ export const adminDeleteForm = createServerFn({ method: "POST" })
     await logAction(admin, context.userId, "form.delete", "forms", data.id, { title: row.title });
     return { ok: true };
   });
+
+/** Learning modules with their question counts, newest first. */
+export const adminListModules = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const admin = await requireAdmin(context);
+    const { data: modules } = await admin
+      .from("learning_modules")
+      .select("id, title, summary, category, video_url, publish_date, is_published")
+      .order("publish_date", { ascending: false });
+    const { data: questions } = await admin.from("quiz_questions").select("id, module_id");
+    const counts: Record<string, number> = {};
+    for (const q of questions ?? []) counts[q.module_id] = (counts[q.module_id] ?? 0) + 1;
+    return {
+      modules: (modules ?? []).map((m) => ({ ...m, question_count: counts[m.id] ?? 0 })),
+    };
+  });
+
+const questionSchema = z.object({
+  question: z.string().min(5).max(400),
+  options: z.array(z.string().min(1).max(200)).length(4),
+  correct_index: z.number().int().min(0).max(3),
+  explanation: z.string().max(600).optional().nullable(),
+});
+
+/** Create or update one learning module together with up to 5 quiz questions. */
+export const adminSaveModule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid().optional().nullable(),
+        title: z.string().min(3).max(200),
+        summary: z.string().max(1000).optional().nullable(),
+        category: z.string().max(60).optional().nullable(),
+        video_url: z.string().max(500).optional().nullable(),
+        publish_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        is_published: z.boolean(),
+        questions: z.array(questionSchema).max(5),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const payload = {
+      title: data.title.trim(),
+      summary: data.summary || null,
+      category: data.category || null,
+      video_url: data.video_url || null,
+      publish_date: data.publish_date,
+      is_published: data.is_published,
+    };
+
+    let moduleId = data.id ?? null;
+    if (moduleId) {
+      const { error } = await admin.from("learning_modules").update(payload).eq("id", moduleId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data: row, error } = await admin
+        .from("learning_modules")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      moduleId = row.id as string;
+    }
+
+    await admin.from("quiz_questions").delete().eq("module_id", moduleId);
+    if (data.questions.length > 0) {
+      const { error } = await admin.from("quiz_questions").insert(
+        data.questions.map((q, i) => ({
+          module_id: moduleId as string,
+          order_index: i,
+          question: q.question.trim(),
+          options: q.options,
+          correct_index: q.correct_index,
+          explanation: q.explanation || null,
+        })),
+      );
+      if (error) throw new Error(error.message);
+    }
+
+    await logAction(admin, context.userId, data.id ? "module.update" : "module.create", "learning_modules", moduleId, {
+      title: payload.title,
+      questions: data.questions.length,
+    });
+    return { id: moduleId as string };
+  });
+
+/** Full module detail including quiz questions and answers, for editing. */
+export const adminGetModule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const { data: module } = await admin
+      .from("learning_modules")
+      .select("id, title, summary, category, video_url, publish_date, is_published")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!module) throw new Error("Module not found");
+    const { data: questions } = await admin
+      .from("quiz_questions")
+      .select("id, order_index, question, options, correct_index, explanation")
+      .eq("module_id", data.id)
+      .order("order_index", { ascending: true });
+    return {
+      module,
+      questions: (questions ?? []).slice(0, 5).map((q) => ({
+        question: q.question,
+        options: (q.options as string[]) ?? [],
+        correct_index: q.correct_index,
+        explanation: q.explanation,
+      })),
+    };
+  });
+
+/** Delete a learning module and its quiz questions. */
+export const adminDeleteModule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    await admin.from("quiz_attempts").delete().eq("module_id", data.id);
+    await admin.from("quiz_questions").delete().eq("module_id", data.id);
+    const { error } = await admin.from("learning_modules").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    await logAction(admin, context.userId, "module.delete", "learning_modules", data.id, {});
+    return { ok: true };
+  });
+
+/** Ask the AI to draft a daily learning module: topic, video suggestion and 5 quiz questions. */
+export const adminAiDraftModule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { topic?: string }) =>
+    z.object({ topic: z.string().max(200).optional() }).parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const apiKey = process.env["LOVABLE_API_KEY"];
+    if (!apiKey) throw new Error("AI is not configured. Contact the IT department.");
+
+    const topic = data.topic?.trim();
+    const prompt = `Create one short daily learning module for employees of SAIL Salem Steel Plant (stainless steel cold rolling plant in Tamil Nadu, India).
+${topic ? `Topic: ${topic}.` : "Choose a useful topic: plant safety, PPE, quality, machinery basics, HR policy awareness or workplace conduct."}
+Return JSON only with this exact shape:
+{"title":string,"summary":string,"category":string,"video_url":string,"questions":[{"question":string,"options":[string,string,string,string],"correct_index":0,"explanation":string}]}
+Rules:
+- Exactly 5 questions, each with exactly 4 options and one correct answer.
+- Simple clear English suitable for employees aged 25-60.
+- video_url must be a real, well-known public YouTube training video embed URL in the form https://www.youtube.com/embed/VIDEO_ID related to the topic. If unsure, use https://www.youtube.com/embed/results?search_query= followed by URL-encoded keywords.`;
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "X-Lovable-AIG-SDK": "fetch",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-5.6-sol",
+        reasoning_effort: "none",
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: "You write concise workplace training content and return strict JSON." },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      if (res.status === 429) throw new Error("AI is busy right now. Please try again in a moment.");
+      if (res.status === 402) throw new Error("AI usage limit reached. Please contact the IT department.");
+      throw new Error(`AI unavailable (${res.status}). ${detail.slice(0, 160)}`);
+    }
+
+    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const raw = json.choices?.[0]?.message?.content ?? "";
+    let parsed: any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("The AI reply could not be read. Please try again.");
+      parsed = JSON.parse(match[0]);
+    }
+
+    const questions = Array.isArray(parsed?.questions) ? parsed.questions.slice(0, 5) : [];
+    return {
+      title: String(parsed?.title ?? "").slice(0, 200),
+      summary: String(parsed?.summary ?? "").slice(0, 1000),
+      category: String(parsed?.category ?? "Safety").slice(0, 60),
+      video_url: String(parsed?.video_url ?? "").slice(0, 500),
+      questions: questions.map((q: any) => ({
+        question: String(q?.question ?? "").slice(0, 400),
+        options: (Array.isArray(q?.options) ? q.options : []).slice(0, 4).map((o: any) => String(o).slice(0, 200)),
+        correct_index: Number.isInteger(q?.correct_index) ? Math.min(Math.max(q.correct_index, 0), 3) : 0,
+        explanation: String(q?.explanation ?? "").slice(0, 600),
+      })),
+    };
+  });
