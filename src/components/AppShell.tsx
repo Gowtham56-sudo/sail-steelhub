@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { SailLogo } from "@/components/SailLogo";
 import { BottomNav } from "@/components/BottomNav";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useI18n } from "@/lib/i18n";
 
 export function AppShell({ title, children }: { title: string; children: ReactNode }) {
@@ -16,6 +17,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
           <p className="truncate text-base font-bold">{title}</p>
           <p className="truncate text-sm text-primary-foreground/85">{t("app.org")}</p>
         </div>
+        <NotificationBell />
       </header>
       <main className="mx-auto w-full max-w-md px-4 py-5">{children}</main>
       <BottomNav />

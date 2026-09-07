@@ -15,6 +15,7 @@ import {
   Trash2,
   Sparkles,
   Pencil,
+  Megaphone,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
@@ -37,6 +38,11 @@ import {
   adminDeleteModule,
   adminAiDraftModule,
 } from "@/lib/admin.functions";
+import {
+  adminListAnnouncements,
+  adminSaveAnnouncement,
+  adminDeleteAnnouncement,
+} from "@/lib/announcements.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -60,7 +66,15 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-type Tab = "overview" | "employees" | "content" | "learning" | "forms" | "greetings" | "audit";
+type Tab =
+  | "overview"
+  | "employees"
+  | "content"
+  | "learning"
+  | "forms"
+  | "announcements"
+  | "greetings"
+  | "audit";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -68,6 +82,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "content", label: "Content" },
   { id: "learning", label: "Learning" },
   { id: "forms", label: "Forms" },
+  { id: "announcements", label: "Announcements" },
   { id: "greetings", label: "Greetings" },
   { id: "audit", label: "Audit" },
 ];
@@ -112,6 +127,7 @@ function AdminPage() {
         {tab === "content" ? <ContentTab /> : null}
         {tab === "learning" ? <LearningTab /> : null}
         {tab === "forms" ? <FormsTab /> : null}
+        {tab === "announcements" ? <AnnouncementsTab /> : null}
         {tab === "greetings" ? <GreetingsTab /> : null}
         {tab === "audit" ? <AuditTab /> : null}
       </div>
@@ -1132,6 +1148,232 @@ function LearningTab() {
           ))}
           {(data?.modules ?? []).length === 0 ? (
             <p className="text-lg text-muted-foreground">No lessons yet.</p>
+          ) : null}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+type AnnouncementDraft = {
+  id: string | null;
+  title: string;
+  content: string;
+  category: string;
+  priority: "normal" | "important" | "urgent";
+  status: "draft" | "published";
+};
+
+const EMPTY_ANNOUNCEMENT: AnnouncementDraft = {
+  id: null,
+  title: "",
+  content: "",
+  category: "General",
+  priority: "normal",
+  status: "published",
+};
+
+const PRIORITY_STYLES: Record<string, string> = {
+  normal: "bg-secondary text-secondary-foreground",
+  important: "bg-accent/15 text-accent",
+  urgent: "bg-destructive/15 text-destructive",
+};
+
+function AnnouncementsTab() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListAnnouncements);
+  const saveFn = useServerFn(adminSaveAnnouncement);
+  const deleteFn = useServerFn(adminDeleteAnnouncement);
+
+  const [form, setForm] = useState<AnnouncementDraft | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const { data, isPending, error } = useQuery({
+    queryKey: ["admin-announcements"],
+    queryFn: () => listFn(),
+  });
+
+  const save = useMutation({
+    mutationFn: (v: AnnouncementDraft) => saveFn({ data: v }),
+    onSuccess: () => {
+      setForm(null);
+      setMessage("Announcement saved. Employees have been notified.");
+      qc.invalidateQueries({ queryKey: ["admin-announcements"] });
+    },
+    onError: (e: Error) => setMessage(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-announcements"] }),
+    onError: (e: Error) => setMessage(e.message),
+  });
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          setMessage(null);
+          setForm({ ...EMPTY_ANNOUNCEMENT });
+        }}
+        className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+      >
+        <Plus aria-hidden className="size-5" /> New announcement
+      </button>
+
+      {message ? <p className="mt-3 text-base font-semibold text-accent">{message}</p> : null}
+
+      {form ? (
+        <form
+          className="card-elevated mt-4 space-y-3 p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save.mutate(form);
+          }}
+        >
+          <h2 className="text-xl font-bold">
+            {form.id ? "Edit announcement" : "New announcement"}
+          </h2>
+          <label className="block">
+            <span className="text-sm font-semibold text-muted-foreground">Title</span>
+            <input
+              className={inputClass}
+              placeholder="Announcement title"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              required
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-muted-foreground">Category</span>
+            <input
+              className={inputClass}
+              placeholder="e.g. Safety, HR, General"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            />
+          </label>
+          <div>
+            <span className="text-sm font-semibold text-muted-foreground">Priority</span>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              {(["normal", "important", "urgent"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setForm({ ...form, priority: p })}
+                  className={`min-h-12 rounded-xl border-2 text-sm font-bold capitalize ${
+                    form.priority === p
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="block">
+            <span className="text-sm font-semibold text-muted-foreground">Message</span>
+            <textarea
+              className="min-h-32 w-full rounded-xl border-2 border-border bg-background p-3 text-base"
+              placeholder="Write the announcement content..."
+              value={form.content}
+              onChange={(e) => setForm({ ...form, content: e.target.value })}
+              required
+            />
+          </label>
+          <label className="flex min-h-12 items-center gap-3 text-base font-semibold">
+            <input
+              type="checkbox"
+              className="size-6"
+              checked={form.status === "published"}
+              onChange={(e) =>
+                setForm({ ...form, status: e.target.checked ? "published" : "draft" })
+              }
+            />
+            Publish immediately (notify all employees)
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={save.isPending}
+              className="min-h-14 flex-1 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+            >
+              {save.isPending ? "Saving…" : form.id ? "Save changes" : "Publish"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm(null)}
+              className="min-h-14 flex-1 rounded-xl border-2 border-border text-lg font-bold"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {isPending ? (
+        <div className="mt-4">
+          <Spinner />
+        </div>
+      ) : error ? (
+        <p className="mt-4 text-lg text-destructive">You do not have admin access.</p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {(data?.announcements ?? []).map((a) => (
+            <li key={a.id} className="card-elevated p-4">
+              <div className="flex items-start gap-2">
+                <Megaphone aria-hidden className="mt-1 size-5 shrink-0 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-bold">{a.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {a.category} · {new Date(a.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${PRIORITY_STYLES[a.priority] ?? PRIORITY_STYLES.normal}`}
+                >
+                  {a.priority}
+                </span>
+              </div>
+              <p className="mt-2 line-clamp-2 text-base text-muted-foreground">{a.content}</p>
+              <p className="mt-2 text-sm font-semibold">
+                {a.status === "published" ? "Published" : "Draft"}
+              </p>
+              <div className="mt-3 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMessage(null);
+                    setForm({
+                      id: a.id,
+                      title: a.title,
+                      content: a.content,
+                      category: a.category,
+                      priority: a.priority as AnnouncementDraft["priority"],
+                      status: a.status as AnnouncementDraft["status"],
+                    });
+                  }}
+                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-primary text-base font-bold text-primary"
+                >
+                  <Pencil aria-hidden className="size-5" />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove.mutate(a.id)}
+                  disabled={remove.isPending}
+                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-destructive text-base font-bold text-destructive"
+                >
+                  <Trash2 aria-hidden className="size-5" />
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))}
+          {(data?.announcements ?? []).length === 0 ? (
+            <p className="text-lg text-muted-foreground">No announcements yet.</p>
           ) : null}
         </ul>
       )}

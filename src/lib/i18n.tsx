@@ -148,6 +148,13 @@ const en: Dictionary = {
   "install.later": "Not now",
   "profile.adminBadge": "ADMINISTRATOR",
   "profile.adminPanel": "Admin Panel",
+  "notifications.label": "Notifications",
+  "notifications.title": "Notifications",
+  "notifications.empty": "No notifications yet.",
+  "notifications.markAll": "Mark all read",
+  "notifications.viewAnnouncement": "View Announcement",
+  "notifications.new": "New Announcement",
+  "notifications.adminPublished": "Admin has published a new announcement.",
 };
 
 const ta: Dictionary = {
@@ -280,6 +287,13 @@ const ta: Dictionary = {
   "install.later": "இப்போது வேண்டாம்",
   "profile.adminBadge": "நிர்வாகி",
   "profile.adminPanel": "நிர்வாக குழு",
+  "notifications.label": "அறிவிப்புகள்",
+  "notifications.title": "அறிவிப்புகள்",
+  "notifications.empty": "இன்னும் அறிவிப்புகள் இல்லை.",
+  "notifications.markAll": "அனைத்தையும் படித்ததாக குறி",
+  "notifications.viewAnnouncement": "அறிவிப்பைக் காண்க",
+  "notifications.new": "புதிய அறிவிப்பு",
+  "notifications.adminPublished": "நிர்வாகம் புதிய அறிவிப்பு வெளியிட்டுள்ளது.",
 };
 
 const hi: Dictionary = {
@@ -412,6 +426,13 @@ const hi: Dictionary = {
   "install.later": "अभी नहीं",
   "profile.adminBadge": "प्रशासक",
   "profile.adminPanel": "प्रशासन पैनल",
+  "notifications.label": "सूचनाएँ",
+  "notifications.title": "सूचनाएँ",
+  "notifications.empty": "अभी कोई सूचना नहीं है।",
+  "notifications.markAll": "सभी पढ़ी हुई चिह्नित करें",
+  "notifications.viewAnnouncement": "घोषणा देखें",
+  "notifications.new": "नई घोषणा",
+  "notifications.adminPublished": "प्रशासन ने नई घोषणा प्रकाशित की है।",
 };
 
 const dictionaries: Record<LanguageCode, Dictionary> = { en, ta, hi };
