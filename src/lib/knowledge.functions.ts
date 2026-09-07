@@ -41,7 +41,8 @@ export const getQuiz = createServerFn({ method: "POST" })
       .from("quiz_questions")
       .select("id, order_index, question, options")
       .eq("module_id", data.moduleId)
-      .order("order_index", { ascending: true });
+      .order("order_index", { ascending: true })
+      .limit(5);
 
     return {
       module,
@@ -67,7 +68,8 @@ export const submitQuiz = createServerFn({ method: "POST" })
       .from("quiz_questions")
       .select("id, order_index, question, options, correct_index, explanation")
       .eq("module_id", data.moduleId)
-      .order("order_index", { ascending: true });
+      .order("order_index", { ascending: true })
+      .limit(5);
 
     const questions = rows ?? [];
     const results = questions.map((q) => {

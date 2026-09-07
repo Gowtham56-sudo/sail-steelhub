@@ -185,7 +185,7 @@ function ModuleCard({
         )}
         {best !== null && (
           <p className="mt-3 text-sm font-semibold">
-            {t("knowledge.best")}: <span className="text-primary">{best}/10</span>
+            {t("knowledge.best")}: <span className="text-primary">{best}/5</span>
           </p>
         )}
         <button type="button" onClick={onStart} className="btn-primary mt-4 w-full">
