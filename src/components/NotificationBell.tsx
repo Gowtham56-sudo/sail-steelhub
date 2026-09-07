@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bell, CheckCheck, X, Megaphone, Loader2 } from "lucide-react";
+import { Bell, CheckCheck, X, Megaphone, Loader as Loader2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import {
   getMyNotifications,
