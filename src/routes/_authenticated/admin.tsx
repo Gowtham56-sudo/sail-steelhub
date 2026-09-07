@@ -869,14 +869,14 @@ function LearningTab() {
   });
 
   const aiDraft = useMutation({
-    mutationFn: () => draftFn({ data: { topic: topic.trim() || undefined } }),
+    mutationFn: () => draftFn({ data: topic.trim() ? { topic: topic.trim() } : {} }),
     onSuccess: (r) => {
       setTitle(r.title);
       setSummary(r.summary);
       setCategory(r.category || "Safety");
       setVideoUrl(r.video_url);
       setQuestions(
-        (r.questions.length ? r.questions : [emptyQuestion()]).map((q) => ({
+        (r.questions.length ? r.questions : [emptyQuestion()]).map((q: DraftQuestion) => ({
           question: q.question,
           options: [0, 1, 2, 3].map((i) => q.options[i] ?? ""),
           correct_index: q.correct_index,
