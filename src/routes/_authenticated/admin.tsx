@@ -13,6 +13,8 @@ import {
   PartyPopper,
   Play,
   Trash2,
+  Sparkles,
+  Pencil,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
@@ -29,6 +31,11 @@ import {
   adminCreateFormUpload,
   adminCreateForm,
   adminDeleteForm,
+  adminListModules,
+  adminGetModule,
+  adminSaveModule,
+  adminDeleteModule,
+  adminAiDraftModule,
 } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -53,12 +60,13 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-type Tab = "overview" | "employees" | "content" | "forms" | "greetings" | "audit";
+type Tab = "overview" | "employees" | "content" | "learning" | "forms" | "greetings" | "audit";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "employees", label: "Employees" },
   { id: "content", label: "Content" },
+  { id: "learning", label: "Learning" },
   { id: "forms", label: "Forms" },
   { id: "greetings", label: "Greetings" },
   { id: "audit", label: "Audit" },
@@ -102,6 +110,7 @@ function AdminPage() {
         {tab === "overview" ? <OverviewTab /> : null}
         {tab === "employees" ? <EmployeesTab /> : null}
         {tab === "content" ? <ContentTab /> : null}
+        {tab === "learning" ? <LearningTab /> : null}
         {tab === "forms" ? <FormsTab /> : null}
         {tab === "greetings" ? <GreetingsTab /> : null}
         {tab === "audit" ? <AuditTab /> : null}
@@ -780,6 +789,349 @@ function FormsTab() {
           ))}
           {(data?.forms ?? []).length === 0 ? (
             <p className="text-lg text-muted-foreground">No forms uploaded yet.</p>
+          ) : null}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+
+type DraftQuestion = { question: string; options: string[]; correct_index: number; explanation: string };
+
+function emptyQuestion(): DraftQuestion {
+  return { question: "", options: ["", "", "", ""], correct_index: 0, explanation: "" };
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function LearningTab() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListModules);
+  const getFn = useServerFn(adminGetModule);
+  const saveFn = useServerFn(adminSaveModule);
+  const deleteFn = useServerFn(adminDeleteModule);
+  const draftFn = useServerFn(adminAiDraftModule);
+
+  const { data, isPending, error } = useQuery({
+    queryKey: ["admin-modules"],
+    queryFn: () => listFn(),
+  });
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [summary, setSummary] = useState("");
+  const [category, setCategory] = useState("Safety");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [publishDate, setPublishDate] = useState(todayISO());
+  const [isPublished, setIsPublished] = useState(true);
+  const [questions, setQuestions] = useState<DraftQuestion[]>([emptyQuestion()]);
+  const [topic, setTopic] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+
+  function resetForm() {
+    setEditingId(null);
+    setTitle("");
+    setSummary("");
+    setCategory("Safety");
+    setVideoUrl("");
+    setPublishDate(todayISO());
+    setIsPublished(true);
+    setQuestions([emptyQuestion()]);
+    setMessage(null);
+  }
+
+  const load = useMutation({
+    mutationFn: (id: string) => getFn({ data: { id } }),
+    onSuccess: (r) => {
+      setEditingId(r.module.id);
+      setTitle(r.module.title);
+      setSummary(r.module.summary ?? "");
+      setCategory(r.module.category ?? "Safety");
+      setVideoUrl(r.module.video_url ?? "");
+      setPublishDate(r.module.publish_date);
+      setIsPublished(r.module.is_published);
+      setQuestions(
+        r.questions.length
+          ? r.questions.map((q) => ({
+              question: q.question,
+              options: [0, 1, 2, 3].map((i) => q.options[i] ?? ""),
+              correct_index: q.correct_index,
+              explanation: q.explanation ?? "",
+            }))
+          : [emptyQuestion()],
+      );
+      setMessage(null);
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+  });
+
+  const aiDraft = useMutation({
+    mutationFn: () => draftFn({ data: { topic: topic.trim() || undefined } }),
+    onSuccess: (r) => {
+      setTitle(r.title);
+      setSummary(r.summary);
+      setCategory(r.category || "Safety");
+      setVideoUrl(r.video_url);
+      setQuestions(
+        (r.questions.length ? r.questions : [emptyQuestion()]).map((q) => ({
+          question: q.question,
+          options: [0, 1, 2, 3].map((i) => q.options[i] ?? ""),
+          correct_index: q.correct_index,
+          explanation: q.explanation ?? "",
+        })),
+      );
+      setMessage("AI draft ready — check the video link and questions, then save.");
+    },
+    onError: (e) => setMessage(e instanceof Error ? e.message : "AI draft failed."),
+  });
+
+  const save = useMutation({
+    mutationFn: () =>
+      saveFn({
+        data: {
+          id: editingId,
+          title: title.trim(),
+          summary: summary.trim() || null,
+          category: category.trim() || null,
+          video_url: videoUrl.trim() || null,
+          publish_date: publishDate,
+          is_published: isPublished,
+          questions: questions
+            .filter((q) => q.question.trim() && q.options.every((o) => o.trim()))
+            .slice(0, 5)
+            .map((q) => ({
+              question: q.question.trim(),
+              options: q.options.map((o) => o.trim()),
+              correct_index: q.correct_index,
+              explanation: q.explanation.trim() || null,
+            })),
+        },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-modules"] });
+      resetForm();
+      setMessage("Saved. Employees will see this lesson and its quiz.");
+    },
+    onError: (e) => setMessage(e instanceof Error ? e.message : "Could not save."),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-modules"] }),
+  });
+
+  function setQuestion(index: number, patch: Partial<DraftQuestion>) {
+    setQuestions((qs) => qs.map((q, i) => (i === index ? { ...q, ...patch } : q)));
+  }
+
+  return (
+    <div>
+      <section className="card-elevated space-y-3 p-4">
+        <h2 className="text-lg font-bold">Let AI prepare today's lesson</h2>
+        <p className="text-sm text-muted-foreground">
+          One video and 5 quiz questions per day. You can edit everything before saving.
+        </p>
+        <input
+          className={inputClass}
+          placeholder="Topic (optional) — e.g. fire safety, PPE"
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={() => aiDraft.mutate()}
+          disabled={aiDraft.isPending}
+          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-primary text-lg font-bold text-primary"
+        >
+          {aiDraft.isPending ? (
+            <Loader2 aria-hidden className="size-5 animate-spin" />
+          ) : (
+            <Sparkles aria-hidden className="size-5" />
+          )}
+          Generate with AI
+        </button>
+      </section>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save.mutate();
+        }}
+        className="card-elevated mt-4 space-y-3 p-4"
+      >
+        <h2 className="text-lg font-bold">{editingId ? "Edit lesson" : "New lesson"}</h2>
+        <input
+          className={inputClass}
+          placeholder="Lesson title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <textarea
+          className="min-h-24 w-full rounded-xl border-2 border-border bg-background p-3 text-base"
+          placeholder="Short summary"
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            className={inputClass}
+            placeholder="Category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
+          <input
+            type="date"
+            aria-label="Publish date"
+            className={inputClass}
+            value={publishDate}
+            onChange={(e) => setPublishDate(e.target.value)}
+          />
+        </div>
+        <input
+          className={inputClass}
+          placeholder="Video link (YouTube embed URL)"
+          value={videoUrl}
+          onChange={(e) => setVideoUrl(e.target.value)}
+        />
+        <label className="flex min-h-12 items-center gap-3 text-base font-semibold">
+          <input
+            type="checkbox"
+            className="size-6"
+            checked={isPublished}
+            onChange={(e) => setIsPublished(e.target.checked)}
+          />
+          Visible to employees
+        </label>
+
+        <h3 className="pt-2 text-base font-bold">Quiz questions ({questions.length} of 5)</h3>
+        {questions.map((q, i) => (
+          <div key={i} className="rounded-xl border-2 border-border p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-base font-bold">Question {i + 1}</p>
+              {questions.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setQuestions((qs) => qs.filter((_, x) => x !== i))}
+                  className="text-base font-bold text-destructive"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+            <input
+              className={`${inputClass} mt-2`}
+              placeholder="Question text"
+              value={q.question}
+              onChange={(e) => setQuestion(i, { question: e.target.value })}
+            />
+            {q.options.map((opt, oi) => (
+              <label key={oi} className="mt-2 flex items-center gap-2">
+                <input
+                  type="radio"
+                  name={`correct-${i}`}
+                  className="size-6"
+                  aria-label={`Option ${oi + 1} is correct`}
+                  checked={q.correct_index === oi}
+                  onChange={() => setQuestion(i, { correct_index: oi })}
+                />
+                <input
+                  className={inputClass}
+                  placeholder={`Option ${String.fromCharCode(65 + oi)}`}
+                  value={opt}
+                  onChange={(e) =>
+                    setQuestion(i, {
+                      options: q.options.map((o, x) => (x === oi ? e.target.value : o)),
+                    })
+                  }
+                />
+              </label>
+            ))}
+            <input
+              className={`${inputClass} mt-2`}
+              placeholder="Explanation (optional)"
+              value={q.explanation}
+              onChange={(e) => setQuestion(i, { explanation: e.target.value })}
+            />
+          </div>
+        ))}
+        {questions.length < 5 ? (
+          <button
+            type="button"
+            onClick={() => setQuestions((qs) => [...qs, emptyQuestion()])}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border text-base font-bold"
+          >
+            <Plus aria-hidden className="size-5" />
+            Add question
+          </button>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={save.isPending}
+          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+        >
+          {save.isPending ? (
+            <Loader2 aria-hidden className="size-5 animate-spin" />
+          ) : (
+            <Plus aria-hidden className="size-5" />
+          )}
+          {editingId ? "Save changes" : "Publish lesson"}
+        </button>
+        {editingId ? (
+          <button
+            type="button"
+            onClick={resetForm}
+            className="min-h-12 w-full rounded-xl border-2 border-border text-base font-bold"
+          >
+            Cancel editing
+          </button>
+        ) : null}
+        {message ? <p className="text-base font-semibold text-accent">{message}</p> : null}
+      </form>
+
+      {isPending ? (
+        <div className="mt-4">
+          <Spinner />
+        </div>
+      ) : error ? (
+        <p className="mt-4 text-lg text-destructive">You do not have admin access.</p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {(data?.modules ?? []).map((m) => (
+            <li key={m.id} className="card-elevated p-4">
+              <p className="text-lg font-bold">{m.title}</p>
+              <p className="text-sm text-muted-foreground">
+                {[m.category, m.publish_date, `${m.question_count} questions`]
+                  .filter(Boolean)
+                  .join(" · ")}
+                {m.is_published ? "" : " · hidden"}
+              </p>
+              <div className="mt-3 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => load.mutate(m.id)}
+                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-primary text-base font-bold text-primary"
+                >
+                  <Pencil aria-hidden className="size-5" />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove.mutate(m.id)}
+                  disabled={remove.isPending}
+                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-destructive text-base font-bold text-destructive"
+                >
+                  <Trash2 aria-hidden className="size-5" />
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))}
+          {(data?.modules ?? []).length === 0 ? (
+            <p className="text-lg text-muted-foreground">No lessons yet.</p>
           ) : null}
         </ul>
       )}
