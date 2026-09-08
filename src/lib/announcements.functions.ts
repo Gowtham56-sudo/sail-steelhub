@@ -110,7 +110,7 @@ export const adminSaveAnnouncement = createServerFn({ method: "POST" })
       return { id: data.id };
     }
 
-    const payload: Record<string, any> = {
+    const payload = {
       title: data.title.trim(),
       content: data.content.trim(),
       category: data.category,
@@ -119,10 +119,8 @@ export const adminSaveAnnouncement = createServerFn({ method: "POST" })
       target_audience: "all",
       created_by: context.userId,
       updated_at: now,
+      ...(isPublishing ? { published_at: now } : {}),
     };
-    if (isPublishing) {
-      payload["published_at"] = now;
-    }
 
     const { data: row, error } = await admin
       .from("announcements")
