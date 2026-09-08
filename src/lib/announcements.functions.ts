@@ -86,17 +86,15 @@ export const adminSaveAnnouncement = createServerFn({ method: "POST" })
       if (!existing) throw new Error("Announcement not found");
 
       const wasPublished = existing.status === "published" && existing.published_at !== null;
-      const payload: Record<string, any> = {
+      const payload = {
         title: data.title.trim(),
         content: data.content.trim(),
         category: data.category,
         priority: data.priority,
         status: data.status,
         updated_at: now,
+        ...(isPublishing && !wasPublished ? { published_at: now } : {}),
       };
-      if (isPublishing && !wasPublished) {
-        payload["published_at"] = now;
-      }
 
       const { error } = await admin.from("announcements").update(payload).eq("id", data.id);
       if (error) throw new Error(error.message);
