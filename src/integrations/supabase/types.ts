@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          priority: string
+          published_at: string | null
+          status: string
+          target_audience: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          priority?: string
+          published_at?: string | null
+          status?: string
+          target_audience?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          priority?: string
+          published_at?: string | null
+          status?: string
+          target_audience?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -297,6 +339,50 @@ export type Database = {
           video_url?: string | null
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          announcement_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          priority: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          priority?: string
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          priority?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quiz_attempts: {
         Row: {
