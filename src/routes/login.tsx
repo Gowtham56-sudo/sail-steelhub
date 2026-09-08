@@ -93,8 +93,10 @@ function LoginPage() {
         return;
       }
       setError("Employee number or password is incorrect.");
-    } catch {
+    } catch (err) {
+      console.error("[login] sign-in failed", err);
       setError("We could not reach the server. Please try again.");
+
     } finally {
       setSubmitting(false);
     }

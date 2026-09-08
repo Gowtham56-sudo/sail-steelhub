@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          priority: string
+          published_at: string | null
+          status: string
+          target_audience: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          priority?: string
+          published_at?: string | null
+          status?: string
+          target_audience?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          priority?: string
+          published_at?: string | null
+          status?: string
+          target_audience?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -46,92 +88,6 @@ export type Database = {
           id?: string
         }
         Relationships: []
-      }
-      announcements: {
-        Row: {
-          id: string
-          title: string
-          content: string
-          category: string
-          priority: string
-          status: string
-          target_audience: string
-          created_by: string | null
-          created_at: string
-          updated_at: string
-          published_at: string | null
-        }
-        Insert: {
-          id?: string
-          title: string
-          content: string
-          category?: string
-          priority?: string
-          status?: string
-          target_audience?: string
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-          published_at?: string | null
-        }
-        Update: {
-          id?: string
-          title?: string
-          content?: string
-          category?: string
-          priority?: string
-          status?: string
-          target_audience?: string
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-          published_at?: string | null
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          id: string
-          user_id: string
-          announcement_id: string | null
-          title: string
-          message: string
-          type: string
-          priority: string
-          is_read: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          announcement_id?: string | null
-          title: string
-          message: string
-          type?: string
-          priority?: string
-          is_read?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          announcement_id?: string | null
-          title?: string
-          message?: string
-          type?: string
-          priority?: string
-          is_read?: boolean
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_announcement_id_fkey"
-            columns: ["announcement_id"]
-            isOneToOne: false
-            referencedRelation: "announcements"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       circulars: {
         Row: {
@@ -383,6 +339,50 @@ export type Database = {
           video_url?: string | null
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          announcement_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          priority: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          priority?: string
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          priority?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quiz_attempts: {
         Row: {

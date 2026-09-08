@@ -109,7 +109,7 @@ export function NotificationBell() {
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2">
               <Megaphone aria-hidden className="size-5 text-primary" />
-              <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${PRIORITY_BADGE[detail.priority] ?? PRIORITY_BADGE.normal}`}>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${PRIORITY_BADGE[detail.priority] ?? PRIORITY_BADGE["normal"]}`}>
                 {detail.priority}
               </span>
             </div>
