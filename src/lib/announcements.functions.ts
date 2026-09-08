@@ -86,7 +86,7 @@ export const adminSaveAnnouncement = createServerFn({ method: "POST" })
       if (!existing) throw new Error("Announcement not found");
 
       const wasPublished = existing.status === "published" && existing.published_at !== null;
-      const payload: Record<string, unknown> = {
+      const payload: Record<string, any> = {
         title: data.title.trim(),
         content: data.content.trim(),
         category: data.category,
@@ -95,7 +95,7 @@ export const adminSaveAnnouncement = createServerFn({ method: "POST" })
         updated_at: now,
       };
       if (isPublishing && !wasPublished) {
-        payload.published_at = now;
+        payload["published_at"] = now;
       }
 
       const { error } = await admin.from("announcements").update(payload).eq("id", data.id);
@@ -112,7 +112,7 @@ export const adminSaveAnnouncement = createServerFn({ method: "POST" })
       return { id: data.id };
     }
 
-    const payload: Record<string, unknown> = {
+    const payload: Record<string, any> = {
       title: data.title.trim(),
       content: data.content.trim(),
       category: data.category,
@@ -123,7 +123,7 @@ export const adminSaveAnnouncement = createServerFn({ method: "POST" })
       updated_at: now,
     };
     if (isPublishing) {
-      payload.published_at = now;
+      payload["published_at"] = now;
     }
 
     const { data: row, error } = await admin

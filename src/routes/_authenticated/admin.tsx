@@ -1332,7 +1332,7 @@ function AnnouncementsTab() {
                   </p>
                 </div>
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${PRIORITY_STYLES[a.priority] ?? PRIORITY_STYLES.normal}`}
+                  className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${PRIORITY_STYLES[a.priority] ?? PRIORITY_STYLES["normal"]}`}
                 >
                   {a.priority}
                 </span>
