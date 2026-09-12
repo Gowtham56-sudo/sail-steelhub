@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, XCircle, Loader2, ArrowLeft } from "lucide-react";
 import { getQuiz, submitQuiz } from "@/lib/knowledge.functions";
 import { useI18n } from "@/lib/i18n";
+import { SteelixQuizHelper } from "@/components/SteelixQuizHelper";
 
 type Results = Awaited<ReturnType<typeof submitQuiz>>;
 
@@ -150,6 +151,12 @@ export function QuizRunner({ moduleId, onExit }: { moduleId: string; onExit: () 
             );
           })}
         </div>
+
+        <SteelixQuizHelper
+          moduleTitle={data.module.title}
+          question={q.question}
+          options={q.options}
+        />
 
         {warn && <p className="mt-3 text-base font-semibold text-destructive">{t("knowledge.selectAnswer")}</p>}
 
