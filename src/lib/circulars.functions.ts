@@ -33,5 +33,17 @@ export const getCircular = createServerFn({ method: "POST" })
       .eq("is_published", true)
       .maybeSingle();
     if (!circular) throw new Error("Circular not found");
-    return { circular };
+
+    // New attachments are stored in a private bucket. Older records can still
+    // contain an external URL, so keep those links unchanged.
+    let fileUrl = circular.file_url;
+    if (fileUrl && !/^https?:\/\//i.test(fileUrl)) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: signed, error } = await supabaseAdmin.storage
+        .from("circular-files")
+        .createSignedUrl(fileUrl, 600, { download: true });
+      if (error || !signed) throw new Error("Unable to prepare circular attachment");
+      fileUrl = signed.signedUrl;
+    }
+    return { circular: { ...circular, file_url: fileUrl } };
   });

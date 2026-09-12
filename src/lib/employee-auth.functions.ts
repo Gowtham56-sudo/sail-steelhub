@@ -121,6 +121,61 @@ export const activateAccount = createServerFn({ method: "POST" })
     return { ok: true as const, email };
   });
 
+/**
+ * Lets an existing employee regain access without relying on an email inbox.
+ * The same date-of-birth verification used for first-time activation is
+ * required before the server updates the Supabase Auth password.
+ */
+export const resetPassword = createServerFn({ method: "POST" })
+  .inputValidator((input: { employeeNumber: string; dateOfBirth: string; password: string }) =>
+    z
+      .object({
+        employeeNumber: employeeNumberSchema,
+        dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use the date picker."),
+        password: z.string().min(MIN_PASSWORD_LENGTH).max(72),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const employeeNumber = normalizeEmployeeNumber(data.employeeNumber);
+    const { data: row, error: lookupError } = await supabaseAdmin
+      .from("employees")
+      .select("id, date_of_birth, is_active, auth_user_id")
+      .eq("employee_number", employeeNumber)
+      .maybeSingle();
+
+    if (lookupError) throw new Error("Unable to verify the employee account.");
+
+    const genericError = {
+      ok: false as const,
+      error: "Employee number or date of birth is incorrect. Please contact HR / IT.",
+    };
+
+    if (!row || !row.is_active || row.date_of_birth !== data.dateOfBirth || !row.auth_user_id) {
+      return genericError;
+    }
+
+    const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(
+      row.auth_user_id,
+      { password: data.password },
+    );
+
+    if (passwordError) {
+      return { ok: false as const, error: "Could not reset the password. Please try again." };
+    }
+
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_user_id: row.auth_user_id,
+      employee_number: employeeNumber,
+      action: "password_reset",
+      entity: "employees",
+      entity_id: row.id,
+    });
+
+    return { ok: true as const };
+  });
+
 /** Profile of the signed-in employee, read through their own permissions. */
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -128,7 +183,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("employees")
       .select(
-        "employee_number, full_name, designation, department, date_of_birth, date_of_joining, work_email, phone, photo_url",
+        "employee_number, full_name, designation, grade, department, date_of_birth, date_of_joining, date_of_joining_ssp, work_email, phone, photo_url",
       )
       .eq("auth_user_id", context.userId)
       .maybeSingle();

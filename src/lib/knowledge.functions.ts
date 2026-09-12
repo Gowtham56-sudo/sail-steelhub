@@ -7,7 +7,7 @@ export const getLearningFeed = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data: modules } = await context.supabase
       .from("learning_modules")
-      .select("id, title, summary, category, video_url, publish_date")
+      .select("id, title, summary, category, video_url, video_path, publish_date")
       .eq("is_published", true)
       .order("publish_date", { ascending: false });
 
@@ -17,7 +17,22 @@ export const getLearningFeed = createServerFn({ method: "GET" })
       .eq("user_id", context.userId)
       .order("completed_at", { ascending: false });
 
-    return { modules: modules ?? [], attempts: attempts ?? [] };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const visibleModules = await Promise.all(
+      (modules ?? []).map(async (module) => {
+        if (!module.video_path) return { ...module, video_source: "external" as const };
+        const { data: signed } = await supabaseAdmin.storage
+          .from("learning-videos")
+          .createSignedUrl(module.video_path, 600);
+        return {
+          ...module,
+          video_url: signed?.signedUrl ?? null,
+          video_source: "upload" as const,
+        };
+      }),
+    );
+
+    return { modules: visibleModules, attempts: attempts ?? [] };
   });
 
 /** Quiz questions for a module WITHOUT the correct answers. */
@@ -30,7 +45,7 @@ export const getQuiz = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: module } = await context.supabase
       .from("learning_modules")
-      .select("id, title, summary, category, video_url, publish_date")
+      .select("id, title, summary, category, video_url, video_path, publish_date")
       .eq("id", data.moduleId)
       .eq("is_published", true)
       .maybeSingle();

@@ -22,8 +22,17 @@ export const getHomeFeed = createServerFn({ method: "GET" })
       .eq("is_active", true);
 
     const now = new Date();
-    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-    const dd = String(now.getUTCDate()).padStart(2, "0");
+    const indiaDate = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now);
+    const getPart = (type: Intl.DateTimeFormatPartTypes) =>
+      indiaDate.find((part) => part.type === type)?.value ?? "";
+    const mm = getPart("month");
+    const dd = getPart("day");
+    const year = Number(getPart("year"));
     const today = `${mm}-${dd}`;
 
     const birthdays = (roster ?? [])
@@ -43,7 +52,7 @@ export const getHomeFeed = createServerFn({ method: "GET" })
         designation: r.designation,
         department: r.department,
         years: r.date_of_joining
-          ? now.getUTCFullYear() - Number(r.date_of_joining.slice(0, 4))
+          ? year - Number(r.date_of_joining.slice(0, 4))
           : null,
       }))
       .filter((r) => (r.years ?? 0) > 0);

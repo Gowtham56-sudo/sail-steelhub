@@ -76,10 +76,10 @@ export const adminListEmployees = createServerFn({ method: "POST" })
     let q = admin
       .from("employees")
       .select(
-        "id, employee_number, full_name, designation, department, work_email, phone, date_of_birth, date_of_joining, is_active, is_admin, auth_user_id",
+        "id, employee_number, full_name, designation, grade, department, work_email, phone, date_of_birth, date_of_joining, date_of_joining_ssp, is_active, is_admin, auth_user_id",
       )
       .order("employee_number", { ascending: true })
-      .limit(100);
+      .limit(1000);
 
     const search = data.search?.trim();
     if (search) {
@@ -97,9 +97,11 @@ const employeeInput = z.object({
   employee_number: z.string().min(3).max(32),
   full_name: z.string().min(2).max(120),
   designation: z.string().max(120).optional().nullable(),
+  grade: z.string().max(32).optional().nullable(),
   department: z.string().max(120).optional().nullable(),
   date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   date_of_joining: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  date_of_joining_ssp: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   work_email: z.string().email().optional().nullable().or(z.literal("")),
   phone: z.string().max(24).optional().nullable(),
   is_active: z.boolean().optional(),
@@ -116,9 +118,11 @@ export const adminSaveEmployee = createServerFn({ method: "POST" })
       employee_number: normalizeEmployeeNumber(data.employee_number),
       full_name: data.full_name.trim(),
       designation: data.designation || null,
+      grade: data.grade || null,
       department: data.department || null,
       date_of_birth: data.date_of_birth || null,
       date_of_joining: data.date_of_joining || null,
+      date_of_joining_ssp: data.date_of_joining_ssp || null,
       work_email: data.work_email || null,
       phone: data.phone || null,
       ...(data.is_active === undefined ? {} : { is_active: data.is_active }),
@@ -261,6 +265,7 @@ export const adminCreateCircular = createServerFn({ method: "POST" })
         category: z.string().min(1).max(60),
         department: z.string().max(80).optional(),
         issued_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        file_url: z.string().min(1).max(400).optional(),
       })
       .parse(input),
   )
@@ -276,6 +281,7 @@ export const adminCreateCircular = createServerFn({ method: "POST" })
         category: data.category,
         department: data.department || null,
         issued_date: data.issued_date,
+        file_url: data.file_url || null,
         is_published: true,
       })
       .select("id")
@@ -287,68 +293,284 @@ export const adminCreateCircular = createServerFn({ method: "POST" })
     return { id: row.id as string };
   });
 
-/** Today's recorded birthday / work-anniversary greetings, newest first. */
+/** Signed upload slot for an optional circular attachment. */
+export const adminCreateCircularUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { fileName: string }) =>
+    z.object({ fileName: z.string().min(1).max(200) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `circulars/${crypto.randomUUID()}-${safe}`;
+    const { data: signed, error } = await admin.storage
+      .from("circular-files")
+      .createSignedUploadUrl(path);
+    if (error || !signed) throw new Error("Unable to prepare circular attachment upload");
+    return { path, token: signed.token };
+  });
+
+const eventInput = z.object({
+  title: z.string().min(3).max(200),
+  description: z.string().max(4000).optional(),
+  category: z.string().max(60).optional(),
+  location: z.string().max(160).optional(),
+  event_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  is_published: z.boolean().optional(),
+});
+
+/** Create an event. Photos can be attached immediately afterwards. */
+export const adminCreateEvent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => eventInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const { data: row, error } = await admin
+      .from("events")
+      .insert({
+        title: data.title.trim(),
+        description: data.description?.trim() || null,
+        category: data.category?.trim() || null,
+        location: data.location?.trim() || null,
+        event_date: data.event_date,
+        is_published: data.is_published ?? true,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    await logAction(admin, context.userId, "event.create", "events", row.id, { title: data.title });
+    return { id: row.id as string };
+  });
+
+/** Signed upload slot for one event image. Only ordinary image formats are accepted. */
+export const adminCreateEventPhotoUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { fileName: string; contentType: string }) =>
+    z
+      .object({
+        fileName: z.string().min(1).max(200),
+        contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `events/${crypto.randomUUID()}-${safe}`;
+    const { data: signed, error } = await admin.storage
+      .from("event-media")
+      .createSignedUploadUrl(path);
+    if (error || !signed) throw new Error("Unable to prepare event photo upload");
+    return { path, token: signed.token };
+  });
+
+/** Attach an uploaded image to an event and optionally use it as the cover image. */
+export const adminAddEventPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        eventId: z.string().uuid(),
+        path: z.string().min(1).max(400).regex(/^events\//),
+        caption: z.string().max(300).optional(),
+        setAsCover: z.boolean().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const { data: lastPhoto } = await admin
+      .from("event_photos")
+      .select("order_index")
+      .eq("event_id", data.eventId)
+      .order("order_index", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const { data: publicUrl } = admin.storage.from("event-media").getPublicUrl(data.path);
+    if (!publicUrl.publicUrl) throw new Error("Unable to prepare event image");
+
+    const { data: row, error } = await admin
+      .from("event_photos")
+      .insert({
+        event_id: data.eventId,
+        image_url: publicUrl.publicUrl,
+        caption: data.caption?.trim() || null,
+        order_index: (lastPhoto?.order_index ?? -1) + 1,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    if (data.setAsCover) {
+      const { error: coverError } = await admin
+        .from("events")
+        .update({ cover_image_url: publicUrl.publicUrl })
+        .eq("id", data.eventId);
+      if (coverError) throw new Error(coverError.message);
+    }
+    await logAction(admin, context.userId, "event.photo.add", "event_photos", row.id, {
+      event_id: data.eventId,
+    });
+    return { id: row.id as string };
+  });
+
+/** Celebration notifications created by the daily database task. */
 export const adminGetCelebrations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const admin = await requireAdmin(context);
-    const { data } = await admin
-      .from("audit_logs")
-      .select("id, action, entity_id, employee_number, details, created_at")
-      .in("action", ["birthday_greeting", "work_anniversary"])
+    const { data } = await (admin as any)
+      .from("notifications")
+      .select("id, kind, title, body, notice_date, created_at")
+      .in("kind", ["birthday", "anniversary"])
       .order("created_at", { ascending: false })
       .limit(50);
     return { greetings: data ?? [] };
   });
 
-/** Manually run the daily celebration scan (same logic as the scheduled job). */
+/** Manually run the same India-time scan that runs every morning. */
 export const adminRunCelebrations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const admin = await requireAdmin(context);
-    const { data: roster } = await admin
-      .from("employees")
-      .select("id, employee_number, full_name, department, date_of_birth, date_of_joining")
-      .eq("is_active", true);
+    const { data, error } = await (admin as any).rpc("generate_daily_celebration_notifications");
+    if (error) throw new Error(error.message);
+    await logAction(admin, context.userId, "celebrations.run", "notifications", null, data ?? {});
+    return data as { count: number; date: string; birthdays: number; anniversaries: number };
+  });
 
-    const now = new Date();
-    const today = `${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(
-      now.getUTCDate(),
-    ).padStart(2, "0")}`;
+const announcementInput = z.object({
+  id: z.string().uuid().optional(),
+  title: z.string().trim().min(3).max(200),
+  body: z.string().trim().min(1).max(10000),
+  image_path: z.string().max(400).regex(/^announcements\//).optional().nullable(),
+  is_published: z.boolean(),
+});
 
-    const rows: {
-      action: string;
-      entity: string;
-      entity_id: string;
-      employee_number: string;
-      details: Record<string, string | number | null>;
-    }[] = [];
-    for (const r of roster ?? []) {
-      if (r.date_of_birth?.slice(5) === today) {
-        rows.push({
-          action: "birthday_greeting",
-          entity: "employees",
-          entity_id: r.id,
-          employee_number: r.employee_number,
-          details: { name: r.full_name, department: r.department, date: today },
-        });
-      }
-      const years = r.date_of_joining
-        ? now.getUTCFullYear() - Number(r.date_of_joining.slice(0, 4))
-        : 0;
-      if (r.date_of_joining?.slice(5) === today && years > 0) {
-        rows.push({
-          action: "work_anniversary",
-          entity: "employees",
-          entity_id: r.id,
-          employee_number: r.employee_number,
-          details: { name: r.full_name, department: r.department, years, date: today },
-        });
-      }
+/** Announcements, including unpublished drafts, for the admin composer. */
+export const adminListAnnouncements = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const admin = await requireAdmin(context);
+    const { data, error } = await (admin as any)
+      .from("announcements")
+      .select("id, title, body, image_path, is_published, published_at, created_at, updated_at")
+      .order("created_at", { ascending: false })
+      .limit(60);
+    if (error) throw new Error("Unable to load announcements");
+    return { announcements: data ?? [] };
+  });
+
+/** A short-lived direct upload token for an optional announcement image. */
+export const adminCreateAnnouncementImageUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { fileName: string; contentType: string }) =>
+    z
+      .object({
+        fileName: z.string().min(1).max(200),
+        contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `announcements/${crypto.randomUUID()}-${safe}`;
+    const { data: signed, error } = await admin.storage
+      .from("announcement-images")
+      .createSignedUploadUrl(path);
+    if (error || !signed) throw new Error("Unable to prepare announcement image upload");
+    return { path, token: signed.token };
+  });
+
+/** Create or edit an announcement and synchronise its employee notification. */
+export const adminSaveAnnouncement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => announcementInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const now = new Date().toISOString();
+    let id = data.id;
+    let oldImagePath: string | null = null;
+
+    if (id) {
+      const { data: current, error: currentError } = await (admin as any)
+        .from("announcements")
+        .select("image_path, published_at")
+        .eq("id", id)
+        .maybeSingle();
+      if (currentError || !current) throw new Error("Announcement not found");
+      oldImagePath = current.image_path;
+      const { error } = await (admin as any)
+        .from("announcements")
+        .update({
+          title: data.title,
+          body: data.body,
+          image_path: data.image_path ?? null,
+          is_published: data.is_published,
+          published_at: data.is_published ? current.published_at ?? now : null,
+        })
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data: row, error } = await (admin as any)
+        .from("announcements")
+        .insert({
+          title: data.title,
+          body: data.body,
+          image_path: data.image_path ?? null,
+          is_published: data.is_published,
+          published_at: data.is_published ? now : null,
+          created_by: context.userId,
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      id = row.id as string;
     }
 
-    if (rows.length > 0) await admin.from("audit_logs").insert(rows);
-    return { count: rows.length, date: today };
+    if (data.is_published) {
+      const { error } = await (admin as any).from("notifications").upsert(
+        {
+          announcement_id: id,
+          kind: "announcement",
+          title: data.title,
+          body: data.body,
+          image_path: data.image_path ?? null,
+          notice_date: now.slice(0, 10),
+        },
+        { onConflict: "announcement_id" },
+      );
+      if (error) throw new Error(`Announcement saved, but notification failed: ${error.message}`);
+    } else {
+      await (admin as any).from("notifications").delete().eq("announcement_id", id);
+    }
+
+    if (oldImagePath && oldImagePath !== data.image_path) {
+      await admin.storage.from("announcement-images").remove([oldImagePath]);
+    }
+    await logAction(admin, context.userId, "announcement.save", "announcements", id, {
+      is_published: data.is_published,
+    });
+    return { id };
+  });
+
+/** Remove an announcement and its related notification/wishes. */
+export const adminDeleteAnnouncement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const { data: row } = await (admin as any)
+      .from("announcements")
+      .select("image_path")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Announcement not found");
+    const { error } = await (admin as any).from("announcements").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    if (row.image_path) await admin.storage.from("announcement-images").remove([row.image_path]);
+    await logAction(admin, context.userId, "announcement.delete", "announcements", data.id);
+    return { ok: true };
   });
 
 /** All forms (published and hidden) for the admin forms manager. */
@@ -432,6 +654,28 @@ export const adminDeleteForm = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Signed upload slot for an admin-uploaded learning video. */
+export const adminCreateLearningVideoUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { fileName: string; contentType: string }) =>
+    z
+      .object({
+        fileName: z.string().min(1).max(200),
+        contentType: z.enum(["video/mp4", "video/webm", "video/quicktime"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await requireAdmin(context);
+    const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `lessons/${crypto.randomUUID()}-${safe}`;
+    const { data: signed, error } = await admin.storage
+      .from("learning-videos")
+      .createSignedUploadUrl(path);
+    if (error || !signed) throw new Error("Unable to prepare learning video upload");
+    return { path, token: signed.token };
+  });
+
 /** Learning modules with their question counts, newest first. */
 export const adminListModules = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -439,7 +683,7 @@ export const adminListModules = createServerFn({ method: "GET" })
     const admin = await requireAdmin(context);
     const { data: modules } = await admin
       .from("learning_modules")
-      .select("id, title, summary, category, video_url, publish_date, is_published")
+      .select("id, title, summary, category, video_url, video_path, publish_date, is_published")
       .order("publish_date", { ascending: false });
     const { data: questions } = await admin.from("quiz_questions").select("id, module_id");
     const counts: Record<string, number> = {};
@@ -467,6 +711,7 @@ export const adminSaveModule = createServerFn({ method: "POST" })
         summary: z.string().max(1000).optional().nullable(),
         category: z.string().max(60).optional().nullable(),
         video_url: z.string().max(500).optional().nullable(),
+        video_path: z.string().max(400).optional().nullable(),
         publish_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         is_published: z.boolean(),
         questions: z.array(questionSchema).max(5),
@@ -480,12 +725,20 @@ export const adminSaveModule = createServerFn({ method: "POST" })
       summary: data.summary || null,
       category: data.category || null,
       video_url: data.video_url || null,
+      video_path: data.video_path || null,
       publish_date: data.publish_date,
       is_published: data.is_published,
     };
 
     let moduleId = data.id ?? null;
+    let previousVideoPath: string | null = null;
     if (moduleId) {
+      const { data: existing } = await admin
+        .from("learning_modules")
+        .select("video_path")
+        .eq("id", moduleId)
+        .maybeSingle();
+      previousVideoPath = existing?.video_path ?? null;
       const { error } = await admin.from("learning_modules").update(payload).eq("id", moduleId);
       if (error) throw new Error(error.message);
     } else {
@@ -496,6 +749,10 @@ export const adminSaveModule = createServerFn({ method: "POST" })
         .single();
       if (error) throw new Error(error.message);
       moduleId = row.id as string;
+    }
+
+    if (previousVideoPath && previousVideoPath !== payload.video_path) {
+      await admin.storage.from("learning-videos").remove([previousVideoPath]);
     }
 
     await admin.from("quiz_questions").delete().eq("module_id", moduleId);
@@ -528,7 +785,7 @@ export const adminGetModule = createServerFn({ method: "POST" })
     const admin = await requireAdmin(context);
     const { data: module } = await admin
       .from("learning_modules")
-      .select("id, title, summary, category, video_url, publish_date, is_published")
+      .select("id, title, summary, category, video_url, video_path, publish_date, is_published")
       .eq("id", data.id)
       .maybeSingle();
     if (!module) throw new Error("Module not found");
@@ -554,10 +811,16 @@ export const adminDeleteModule = createServerFn({ method: "POST" })
   .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const admin = await requireAdmin(context);
+    const { data: module } = await admin
+      .from("learning_modules")
+      .select("video_path")
+      .eq("id", data.id)
+      .maybeSingle();
     await admin.from("quiz_attempts").delete().eq("module_id", data.id);
     await admin.from("quiz_questions").delete().eq("module_id", data.id);
     const { error } = await admin.from("learning_modules").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    if (module?.video_path) await admin.storage.from("learning-videos").remove([module.video_path]);
     await logAction(admin, context.userId, "module.delete", "learning_modules", data.id, {});
     return { ok: true };
   });
@@ -570,8 +833,7 @@ export const adminAiDraftModule = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requireAdmin(context);
-    const apiKey = process.env["LOVABLE_API_KEY"];
-    if (!apiKey) throw new Error("AI is not configured. Contact the IT department.");
+    const provider = process.env["AI_PROVIDER"]?.trim().toLowerCase() === "openai" ? "openai" : "ollama";
 
     const topic = data.topic?.trim();
     const prompt = `Create one short daily learning module for employees of SAIL Salem Steel Plant (stainless steel cold rolling plant in Tamil Nadu, India).
@@ -583,33 +845,74 @@ Rules:
 - Simple clear English suitable for employees aged 25-60.
 - video_url must be a real, well-known public YouTube training video embed URL in the form https://www.youtube.com/embed/VIDEO_ID related to the topic. If unsure, use https://www.youtube.com/embed/results?search_query= followed by URL-encoded keywords.`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "X-Lovable-AIG-SDK": "fetch",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5.6-sol",
-        reasoning_effort: "none",
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: "You write concise workplace training content and return strict JSON." },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
+    let res: Response;
+    try {
+      if (provider === "ollama") {
+        const baseUrl = (process.env["OLLAMA_BASE_URL"]?.trim() || "http://127.0.0.1:11434").replace(
+          /\/$/,
+          "",
+        );
+        const model = process.env["OLLAMA_MODEL"]?.trim() || "llama3.2:3b";
+        res = await fetch(`${baseUrl}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model,
+            stream: false,
+            format: "json",
+            messages: [
+              { role: "system", content: "You write concise workplace training content and return strict JSON." },
+              { role: "user", content: prompt },
+            ],
+          }),
+        });
+      } else {
+        const apiKey = process.env["OPENAI_API_KEY"];
+        if (!apiKey) throw new Error("AI is not configured. Contact the IT department.");
+        const model = process.env["OPENAI_MODEL"]?.trim() || "gpt-5-mini";
+        res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: "You write concise workplace training content and return strict JSON." },
+              { role: "user", content: prompt },
+            ],
+          }),
+        });
+      }
+    } catch {
+      throw new Error(
+        provider === "ollama"
+          ? "Free local AI is not running. Start Ollama on this computer, then try again."
+          : "AI is unavailable. Please try again in a moment.",
+      );
+    }
 
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
+      if (provider === "ollama") {
+        throw new Error(
+          detail.toLowerCase().includes("model")
+            ? "The free local AI model is not installed. Run: ollama pull llama3.2:3b"
+            : "Free local AI is unavailable. Start Ollama on this computer, then try again.",
+        );
+      }
       if (res.status === 429) throw new Error("AI is busy right now. Please try again in a moment.");
       if (res.status === 402) throw new Error("AI usage limit reached. Please contact the IT department.");
       throw new Error(`AI unavailable (${res.status}). ${detail.slice(0, 160)}`);
     }
 
-    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const raw = json.choices?.[0]?.message?.content ?? "";
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+      message?: { content?: string };
+    };
+    const raw = provider === "ollama" ? (json.message?.content ?? "") : (json.choices?.[0]?.message?.content ?? "");
     let parsed: any;
     try {
       parsed = JSON.parse(raw);
