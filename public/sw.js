@@ -1,5 +1,5 @@
 // Minimal offline shell for the SSP Knowledge Hub.
-const CACHE = "ssp-hub-v1";
+const CACHE = "ssp-hub-v3";
 const ASSETS = ["/icon-192.png", "/icon-512.png", "/favicon.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
