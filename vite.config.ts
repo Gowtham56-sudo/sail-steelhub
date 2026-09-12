@@ -7,6 +7,11 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  vite: {
+    // Keep Vite's editable dependency cache out of OneDrive-managed node_modules.
+    // This makes local demos reliable when OneDrive temporarily locks that folder.
+    cacheDir: process.env.VITE_CACHE_DIR ?? ".vite-cache",
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

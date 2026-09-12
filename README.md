@@ -1714,3 +1714,13 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Free local AI for the submission
+
+The project now defaults to a local [Ollama](https://ollama.com/) assistant, so it has no per-message API charge. Install Ollama on the computer that runs the app, then run:
+
+```sh
+ollama pull llama3.2:3b
+```
+
+Keep Ollama running while you demonstrate the project, then start the app with `npm run dev`. The AI assistant and the admin lesson-draft feature will use the local model. This is free to run but it is not a hosted service: the computer running Ollama must stay on. For a permanently hosted AI, set `AI_PROVIDER=openai` and use an API account with available credit.
