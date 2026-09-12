@@ -8,15 +8,15 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/_authenticated/ai")({
   head: () => ({
     meta: [
-      { title: "AI Assistant — SAIL Salem Steel Plant Knowledge Hub" },
+      { title: "Steelix AI — SAIL Salem Steel Plant Knowledge Hub" },
       {
         name: "description",
-        content: "Ask the plant AI assistant about company processes, safety and policies.",
+        content: "Ask Steelix AI about company processes, safety and policies.",
       },
-      { property: "og:title", content: "AI Assistant — SAIL Salem Steel Plant Knowledge Hub" },
+      { property: "og:title", content: "Steelix AI — SAIL Salem Steel Plant Knowledge Hub" },
       {
         property: "og:description",
-        content: "Ask the plant AI assistant about company processes, safety and policies.",
+        content: "Ask Steelix AI about company processes, safety and policies.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

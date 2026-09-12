@@ -133,6 +133,7 @@ type ModuleRow = {
   summary: string | null;
   category: string | null;
   video_url: string | null;
+  video_source: "external" | "upload";
   publish_date: string;
 };
 
@@ -152,14 +153,25 @@ function ModuleCard({
     <article className="card-elevated mt-3 overflow-hidden">
       {featured && module.video_url && (
         <div className="aspect-video w-full bg-muted">
-          <iframe
-            src={module.video_url}
-            title={module.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
-            allowFullScreen
-            loading="lazy"
-            className="size-full"
-          />
+          {module.video_source === "upload" ? (
+            <video
+              src={module.video_url}
+              controls
+              preload="metadata"
+              className="size-full bg-black object-contain"
+            >
+              Your browser cannot play this video.
+            </video>
+          ) : (
+            <iframe
+              src={module.video_url}
+              title={module.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+              className="size-full"
+            />
+          )}
         </div>
       )}
       <div className="p-5">

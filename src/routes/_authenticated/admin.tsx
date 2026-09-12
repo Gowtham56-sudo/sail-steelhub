@@ -16,6 +16,7 @@ import {
   Sparkles,
   Pencil,
   Megaphone,
+  ImagePlus,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
@@ -26,6 +27,10 @@ import {
   adminListContent,
   adminSetPublished,
   adminCreateCircular,
+  adminCreateCircularUpload,
+  adminCreateEvent,
+  adminCreateEventPhotoUpload,
+  adminAddEventPhoto,
   adminGetCelebrations,
   adminRunCelebrations,
   adminListForms,
@@ -37,12 +42,12 @@ import {
   adminSaveModule,
   adminDeleteModule,
   adminAiDraftModule,
-} from "@/lib/admin.functions";
-import {
+  adminCreateLearningVideoUpload,
   adminListAnnouncements,
+  adminCreateAnnouncementImageUpload,
   adminSaveAnnouncement,
   adminDeleteAnnouncement,
-} from "@/lib/announcements.functions";
+} from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -181,9 +186,11 @@ const EMPTY_EMPLOYEE = {
   employee_number: "",
   full_name: "",
   designation: "",
+  grade: "",
   department: "",
   date_of_birth: "",
   date_of_joining: "",
+  date_of_joining_ssp: "",
   work_email: "",
   phone: "",
 };
@@ -264,9 +271,11 @@ function EmployeesTab() {
               ["employee_number", "Employee number", "text"],
               ["full_name", "Full name", "text"],
               ["designation", "Designation", "text"],
+              ["grade", "Grade", "text"],
               ["department", "Department", "text"],
               ["date_of_birth", "Date of birth", "date"],
-              ["date_of_joining", "Date of joining", "date"],
+              ["date_of_joining", "Date of joining SAIL", "date"],
+              ["date_of_joining_ssp", "Date of joining SSP", "date"],
               ["work_email", "Work email", "email"],
               ["phone", "Phone", "tel"],
             ] as const
@@ -311,7 +320,7 @@ function EmployeesTab() {
             <li key={e.id} className="card-elevated p-4">
               <p className="text-lg font-bold">{e.full_name}</p>
               <p className="text-sm font-semibold text-muted-foreground">
-                {e.employee_number} · {e.designation ?? "—"} · {e.department ?? "—"}
+                {e.employee_number} · {e.designation ?? "—"} · {e.grade ?? "—"} · {e.department ?? "—"}
               </p>
               <p className="mt-1 text-sm">
                 {e.auth_user_id ? "Activated" : "Not activated"} ·{" "}
@@ -327,9 +336,11 @@ function EmployeesTab() {
                       employee_number: e.employee_number,
                       full_name: e.full_name,
                       designation: e.designation ?? "",
+                      grade: e.grade ?? "",
                       department: e.department ?? "",
                       date_of_birth: e.date_of_birth ?? "",
                       date_of_joining: e.date_of_joining ?? "",
+                      date_of_joining_ssp: e.date_of_joining_ssp ?? "",
                       work_email: e.work_email ?? "",
                       phone: e.phone ?? "",
                     });
@@ -371,14 +382,36 @@ const CIRCULAR_FORM = {
   issued_date: new Date().toISOString().slice(0, 10),
 };
 
+const EVENT_FORM = {
+  title: "",
+  description: "",
+  category: "General",
+  location: "",
+  event_date: new Date().toISOString().slice(0, 10),
+  is_published: true,
+};
+
+const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
+const EVENT_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024;
+const LEARNING_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+
 function ContentTab() {
   const qc = useQueryClient();
   const listFn = useServerFn(adminListContent);
   const publishFn = useServerFn(adminSetPublished);
-  const createFn = useServerFn(adminCreateCircular);
+  const createCircularFn = useServerFn(adminCreateCircular);
+  const circularUploadFn = useServerFn(adminCreateCircularUpload);
+  const createEventFn = useServerFn(adminCreateEvent);
+  const photoUploadFn = useServerFn(adminCreateEventPhotoUpload);
+  const addPhotoFn = useServerFn(adminAddEventPhoto);
 
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ ...CIRCULAR_FORM });
+  const [showCircularForm, setShowCircularForm] = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [circularForm, setCircularForm] = useState({ ...CIRCULAR_FORM });
+  const [circularFile, setCircularFile] = useState<File | null>(null);
+  const [eventForm, setEventForm] = useState({ ...EVENT_FORM });
+  const [eventPhotos, setEventPhotos] = useState<File[]>([]);
   const [message, setMessage] = useState<string | null>(null);
 
   const { data, isPending } = useQuery({
@@ -393,14 +426,65 @@ function ContentTab() {
       is_published: boolean;
     }) => publishFn({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-content"] }),
+    onError: (e: Error) => setMessage(e.message),
   });
 
-  const create = useMutation({
-    mutationFn: (v: typeof CIRCULAR_FORM) => createFn({ data: v }),
+  const createCircular = useMutation({
+    mutationFn: async ({ fields, file }: { fields: typeof CIRCULAR_FORM; file: File | null }) => {
+      let file_url: string | undefined;
+      if (file) {
+        if (file.size > MAX_UPLOAD_BYTES) throw new Error("Attachment must be 6 MB or smaller.");
+        const slot = await circularUploadFn({ data: { fileName: file.name } });
+        const { error } = await supabase.storage
+          .from("circular-files")
+          .uploadToSignedUrl(slot.path, slot.token, file);
+        if (error) throw new Error(error.message);
+        file_url = slot.path;
+      }
+      return createCircularFn({ data: { ...fields, file_url } });
+    },
     onSuccess: () => {
-      setShowForm(false);
-      setForm({ ...CIRCULAR_FORM });
+      setShowCircularForm(false);
+      setCircularForm({ ...CIRCULAR_FORM });
+      setCircularFile(null);
       setMessage("Circular published.");
+      qc.invalidateQueries({ queryKey: ["admin-content"] });
+    },
+    onError: (e: Error) => setMessage(e.message),
+  });
+
+  const createEvent = useMutation({
+    mutationFn: async ({ fields, photos }: { fields: typeof EVENT_FORM; photos: File[] }) => {
+      for (const photo of photos) {
+        if (photo.size > MAX_UPLOAD_BYTES) {
+          throw new Error(`${photo.name} must be 6 MB or smaller.`);
+        }
+        if (!EVENT_IMAGE_TYPES.has(photo.type)) {
+          throw new Error(`${photo.name} must be a JPG, PNG, or WebP image.`);
+        }
+      }
+      const event = await createEventFn({ data: fields });
+      for (let index = 0; index < photos.length; index += 1) {
+        const photo = photos[index];
+        if (!photo) continue;
+        const slot = await photoUploadFn({
+          data: { fileName: photo.name, contentType: photo.type as "image/jpeg" | "image/png" | "image/webp" },
+        });
+        const { error } = await supabase.storage
+          .from("event-media")
+          .uploadToSignedUrl(slot.path, slot.token, photo);
+        if (error) throw new Error(error.message);
+        await addPhotoFn({
+          data: { eventId: event.id, path: slot.path, setAsCover: index === 0 },
+        });
+      }
+      return event;
+    },
+    onSuccess: () => {
+      setShowEventForm(false);
+      setEventForm({ ...EVENT_FORM });
+      setEventPhotos([]);
+      setMessage("Event published. Photos are visible in the event gallery.");
       qc.invalidateQueries({ queryKey: ["admin-content"] });
     },
     onError: (e: Error) => setMessage(e.message),
@@ -450,21 +534,36 @@ function ContentTab() {
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => setShowForm((v) => !v)}
-        className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
-      >
-        <Plus aria-hidden className="size-5" /> New circular
-      </button>
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setShowCircularForm((v) => !v);
+            setShowEventForm(false);
+          }}
+          className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary text-base font-bold text-primary-foreground"
+        >
+          <Plus aria-hidden className="size-5" /> New circular
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowEventForm((v) => !v);
+            setShowCircularForm(false);
+          }}
+          className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-primary text-base font-bold text-primary"
+        >
+          <Plus aria-hidden className="size-5" /> New event
+        </button>
+      </div>
       {message ? <p className="mt-3 text-base font-semibold text-accent">{message}</p> : null}
 
-      {showForm ? (
+      {showCircularForm ? (
         <form
           className="card-elevated mt-4 space-y-3 p-4"
           onSubmit={(e) => {
             e.preventDefault();
-            create.mutate(form);
+            createCircular.mutate({ fields: circularForm, file: circularFile });
           }}
         >
           {(
@@ -480,8 +579,8 @@ function ContentTab() {
               <span className="text-sm font-semibold text-muted-foreground">{label}</span>
               <input
                 type={type}
-                value={form[key]}
-                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                value={circularForm[key]}
+                onChange={(e) => setCircularForm({ ...circularForm, [key]: e.target.value })}
                 required={key !== "department"}
                 className={inputClass}
               />
@@ -490,8 +589,8 @@ function ContentTab() {
           <label className="block">
             <span className="text-sm font-semibold text-muted-foreground">Summary</span>
             <textarea
-              value={form.summary}
-              onChange={(e) => setForm({ ...form, summary: e.target.value })}
+              value={circularForm.summary}
+              onChange={(e) => setCircularForm({ ...circularForm, summary: e.target.value })}
               rows={2}
               className="w-full rounded-xl border-2 border-border bg-background p-3 text-base"
             />
@@ -499,18 +598,93 @@ function ContentTab() {
           <label className="block">
             <span className="text-sm font-semibold text-muted-foreground">Full text</span>
             <textarea
-              value={form.body}
-              onChange={(e) => setForm({ ...form, body: e.target.value })}
+              value={circularForm.body}
+              onChange={(e) => setCircularForm({ ...circularForm, body: e.target.value })}
               rows={5}
               className="w-full rounded-xl border-2 border-border bg-background p-3 text-base"
             />
           </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-muted-foreground">
+              Attachment (optional, max 6 MB)
+            </span>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+              onChange={(e) => setCircularFile(e.target.files?.[0] ?? null)}
+              className="mt-1 w-full text-base"
+            />
+          </label>
           <button
             type="submit"
-            disabled={create.isPending}
+            disabled={createCircular.isPending}
             className="min-h-14 w-full rounded-xl bg-primary text-lg font-bold text-primary-foreground"
           >
-            {create.isPending ? "Publishing…" : "Publish circular"}
+            {createCircular.isPending ? "Publishing…" : "Publish circular"}
+          </button>
+        </form>
+      ) : null}
+
+      {showEventForm ? (
+        <form
+          className="card-elevated mt-4 space-y-3 p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            createEvent.mutate({ fields: eventForm, photos: eventPhotos });
+          }}
+        >
+          <h2 className="text-lg font-bold">New event and photo gallery</h2>
+          {(
+            [
+              ["title", "Event title", "text"],
+              ["category", "Category", "text"],
+              ["location", "Location", "text"],
+              ["event_date", "Event date", "date"],
+            ] as const
+          ).map(([key, label, type]) => (
+            <label key={key} className="block">
+              <span className="text-sm font-semibold text-muted-foreground">{label}</span>
+              <input
+                type={type}
+                value={eventForm[key]}
+                onChange={(e) => setEventForm({ ...eventForm, [key]: e.target.value })}
+                required={key === "title" || key === "event_date"}
+                className={inputClass}
+              />
+            </label>
+          ))}
+          <label className="block">
+            <span className="text-sm font-semibold text-muted-foreground">Description</span>
+            <textarea
+              value={eventForm.description}
+              onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+              rows={4}
+              className="w-full rounded-xl border-2 border-border bg-background p-3 text-base"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-muted-foreground">
+              Photos (JPG, PNG, or WebP; each max 6 MB)
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={(e) => setEventPhotos(Array.from(e.target.files ?? []))}
+              className="mt-1 w-full text-base"
+            />
+            {eventPhotos.length ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {eventPhotos.length} photo{eventPhotos.length === 1 ? "" : "s"} selected. The first will be the cover image.
+              </p>
+            ) : null}
+          </label>
+          <button
+            type="submit"
+            disabled={createEvent.isPending}
+            className="min-h-14 w-full rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+          >
+            {createEvent.isPending ? "Publishing…" : "Publish event"}
           </button>
         </form>
       ) : null}
@@ -549,6 +723,233 @@ function ContentTab() {
   );
 }
 
+const ANNOUNCEMENT_FORM = {
+  id: undefined as string | undefined,
+  title: "",
+  body: "",
+  image_path: null as string | null,
+  is_published: true,
+};
+
+function AnnouncementsTab() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListAnnouncements);
+  const uploadFn = useServerFn(adminCreateAnnouncementImageUpload);
+  const saveFn = useServerFn(adminSaveAnnouncement);
+  const deleteFn = useServerFn(adminDeleteAnnouncement);
+  const [form, setForm] = useState({ ...ANNOUNCEMENT_FORM });
+  const [image, setImage] = useState<File | null>(null);
+  const [showComposer, setShowComposer] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const { data, isPending, error } = useQuery({
+    queryKey: ["admin-announcements"],
+    queryFn: () => listFn(),
+  });
+
+  const save = useMutation({
+    mutationFn: async ({ fields, file }: { fields: typeof ANNOUNCEMENT_FORM; file: File | null }) => {
+      let image_path = fields.image_path;
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) throw new Error("Announcement image must be 5 MB or smaller.");
+        if (!EVENT_IMAGE_TYPES.has(file.type)) throw new Error("Use a JPG, PNG, or WebP image.");
+        const slot = await uploadFn({
+          data: {
+            fileName: file.name,
+            contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
+          },
+        });
+        const { error: uploadError } = await supabase.storage
+          .from("announcement-images")
+          .uploadToSignedUrl(slot.path, slot.token, file);
+        if (uploadError) throw new Error(uploadError.message);
+        image_path = slot.path;
+      }
+      return saveFn({ data: { ...fields, image_path } });
+    },
+    onSuccess: () => {
+      setForm({ ...ANNOUNCEMENT_FORM });
+      setImage(null);
+      setShowComposer(false);
+      setMessage("Announcement saved. Published announcements are now in every employee's notification bell.");
+      qc.invalidateQueries({ queryKey: ["admin-announcements"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
+    },
+    onError: (e: Error) => setMessage(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => {
+      setMessage("Announcement removed.");
+      qc.invalidateQueries({ queryKey: ["admin-announcements"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
+    },
+    onError: (e: Error) => setMessage(e.message),
+  });
+
+  function resetComposer() {
+    setForm({ ...ANNOUNCEMENT_FORM });
+    setImage(null);
+    setShowComposer(false);
+  }
+
+  if (isPending) return <Spinner />;
+  if (error) return <p className="text-lg text-destructive">You do not have admin access.</p>;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          setShowComposer((visible) => !visible);
+          setMessage(null);
+        }}
+        className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+      >
+        <Megaphone aria-hidden className="size-5" />
+        {showComposer ? "Close announcement composer" : "New announcement"}
+      </button>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Publishing sends an in-app notification to every active employee. Add one optional image for a more visual post.
+      </p>
+      {message ? <p className="mt-3 text-base font-semibold text-accent">{message}</p> : null}
+
+      {showComposer ? (
+        <form
+          className="card-elevated mt-4 space-y-3 p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate({ fields: form, file: image });
+          }}
+        >
+          <h2 className="text-lg font-bold">{form.id ? "Edit announcement" : "Create announcement"}</h2>
+          <label className="block">
+            <span className="text-sm font-semibold text-muted-foreground">Title</span>
+            <input
+              required
+              maxLength={200}
+              value={form.title}
+              onChange={(event) => setForm({ ...form, title: event.target.value })}
+              className={inputClass}
+              placeholder="Example: Safety briefing on Friday"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-muted-foreground">Announcement</span>
+            <textarea
+              required
+              maxLength={10000}
+              rows={6}
+              value={form.body}
+              onChange={(event) => setForm({ ...form, body: event.target.value })}
+              className="w-full rounded-xl border-2 border-border bg-background p-3 text-base"
+              placeholder="Write the information employees need to know…"
+            />
+          </label>
+          <label className="block">
+            <span className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <ImagePlus aria-hidden className="size-4" /> Optional image (JPG, PNG, or WebP; max 5 MB)
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(event) => setImage(event.target.files?.[0] ?? null)}
+              className="mt-1 w-full text-base"
+            />
+            {image ? <p className="mt-1 text-sm text-muted-foreground">{image.name} will upload when saved.</p> : null}
+            {!image && form.image_path ? (
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, image_path: null })}
+                className="mt-2 text-sm font-bold text-destructive"
+              >
+                Remove current image
+              </button>
+            ) : null}
+          </label>
+          <label className="flex min-h-12 items-center gap-3 text-base font-semibold">
+            <input
+              type="checkbox"
+              className="size-6"
+              checked={form.is_published}
+              onChange={(event) => setForm({ ...form, is_published: event.target.checked })}
+            />
+            Publish to every employee now
+          </label>
+          <button
+            type="submit"
+            disabled={save.isPending}
+            className="min-h-14 w-full rounded-xl bg-primary text-lg font-bold text-primary-foreground"
+          >
+            {save.isPending ? "Saving…" : form.is_published ? "Publish announcement" : "Save draft"}
+          </button>
+          <button
+            type="button"
+            onClick={resetComposer}
+            className="min-h-12 w-full rounded-xl border-2 border-border text-base font-bold"
+          >
+            Cancel
+          </button>
+        </form>
+      ) : null}
+
+      <h2 className="mt-6 text-xl font-bold">Published and draft announcements</h2>
+      {(data?.announcements ?? []).length === 0 ? (
+        <p className="mt-3 text-lg text-muted-foreground">No announcements yet.</p>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {(data?.announcements ?? []).map((announcement: any) => (
+            <li key={announcement.id} className="card-elevated p-4">
+              <div className="flex gap-3">
+                <Megaphone aria-hidden className="mt-0.5 size-6 shrink-0 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-bold">{announcement.title}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground line-clamp-3">
+                    {announcement.body}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-muted-foreground">
+                    {announcement.is_published ? "Published to employee notifications" : "Draft"}
+                    {announcement.image_path ? " · image attached" : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({
+                      id: announcement.id,
+                      title: announcement.title,
+                      body: announcement.body,
+                      image_path: announcement.image_path,
+                      is_published: announcement.is_published,
+                    });
+                    setImage(null);
+                    setShowComposer(true);
+                    setMessage(null);
+                  }}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-primary text-base font-bold text-primary"
+                >
+                  <Pencil aria-hidden className="size-5" /> Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove.mutate(announcement.id)}
+                  disabled={remove.isPending}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-destructive text-base font-bold text-destructive"
+                >
+                  <Trash2 aria-hidden className="size-5" /> Delete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function GreetingsTab() {
   const qc = useQueryClient();
   const listFn = useServerFn(adminGetCelebrations);
@@ -583,11 +984,11 @@ function GreetingsTab() {
         Run today's greeting scan now
       </button>
       <p className="mt-2 text-sm text-muted-foreground">
-        The backend also runs this automatically every day at 9:00 AM India time.
+        The database also runs this automatically every day at 9:00 AM India time and sends it to every employee's notification bell.
       </p>
       {run.data ? (
         <p className="mt-2 text-base font-semibold text-accent">
-          Scan complete — {run.data.count} greeting{run.data.count === 1 ? "" : "s"} recorded for
+          Scan complete — {run.data.count} greeting{run.data.count === 1 ? "" : "s"} sent for
           today ({run.data.date}).
         </p>
       ) : null}
@@ -603,16 +1004,12 @@ function GreetingsTab() {
         <p className="mt-4 text-lg text-destructive">You do not have admin access.</p>
       ) : !data!.greetings.length ? (
         <p className="mt-4 text-lg text-muted-foreground">
-          No greetings recorded yet. Use the button above or wait for the daily 9:00 AM scan.
+          No greetings sent yet. Use the button above or wait for the daily 9:00 AM scan.
         </p>
       ) : (
         <ul className="mt-4 space-y-3">
-          {data!.greetings.map((g) => {
-            const d =
-              g.details && typeof g.details === "object" && !Array.isArray(g.details)
-                ? (g.details as Record<string, unknown>)
-                : {};
-            const isBirthday = g.action === "birthday_greeting";
+          {data!.greetings.map((g: any) => {
+            const isBirthday = g.kind === "birthday";
             return (
               <li key={g.id} className="card-elevated flex items-center gap-3 p-4">
                 {isBirthday ? (
@@ -622,12 +1019,10 @@ function GreetingsTab() {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-base font-bold">
-                    {typeof d["name"] === "string" ? d["name"] : (g.employee_number ?? "Employee")}
-                    {typeof d["years"] === "number" ? ` — ${d["years"]} years` : ""}
+                    {g.title}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {isBirthday ? "Birthday" : "Work anniversary"}
-                    {typeof d["department"] === "string" ? ` · ${d["department"]}` : ""} ·{" "}
+                    {isBirthday ? "Birthday" : "Work anniversary"} · {g.notice_date} ·{" "}
                     {new Date(g.created_at).toLocaleString()}
                   </p>
                 </div>
@@ -830,6 +1225,7 @@ function LearningTab() {
   const saveFn = useServerFn(adminSaveModule);
   const deleteFn = useServerFn(adminDeleteModule);
   const draftFn = useServerFn(adminAiDraftModule);
+  const videoUploadFn = useServerFn(adminCreateLearningVideoUpload);
 
   const { data, isPending, error } = useQuery({
     queryKey: ["admin-modules"],
@@ -841,6 +1237,8 @@ function LearningTab() {
   const [summary, setSummary] = useState("");
   const [category, setCategory] = useState("Safety");
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoPath, setVideoPath] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [publishDate, setPublishDate] = useState(todayISO());
   const [isPublished, setIsPublished] = useState(true);
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyQuestion()]);
@@ -853,6 +1251,8 @@ function LearningTab() {
     setSummary("");
     setCategory("Safety");
     setVideoUrl("");
+    setVideoPath(null);
+    setVideoFile(null);
     setPublishDate(todayISO());
     setIsPublished(true);
     setQuestions([emptyQuestion()]);
@@ -867,6 +1267,8 @@ function LearningTab() {
       setSummary(r.module.summary ?? "");
       setCategory(r.module.category ?? "Safety");
       setVideoUrl(r.module.video_url ?? "");
+      setVideoPath(r.module.video_path ?? null);
+      setVideoFile(null);
       setPublishDate(r.module.publish_date);
       setIsPublished(r.module.is_published);
       setQuestions(
@@ -891,6 +1293,8 @@ function LearningTab() {
       setSummary(r.summary);
       setCategory(r.category || "Safety");
       setVideoUrl(r.video_url);
+      setVideoPath(null);
+      setVideoFile(null);
       setQuestions(
         (r.questions.length ? r.questions : [emptyQuestion()]).map((q: DraftQuestion) => ({
           question: q.question,
@@ -905,14 +1309,39 @@ function LearningTab() {
   });
 
   const save = useMutation({
-    mutationFn: () =>
-      saveFn({
+    mutationFn: async () => {
+      let uploadedVideoPath = videoPath;
+      let uploadedVideoUrl = videoUrl.trim() || null;
+
+      if (videoFile) {
+        if (!LEARNING_VIDEO_TYPES.has(videoFile.type)) {
+          throw new Error("Choose an MP4, WebM, or MOV video file.");
+        }
+        if (videoFile.size > MAX_VIDEO_UPLOAD_BYTES) {
+          throw new Error("Video must be 50 MB or smaller on the free Supabase plan.");
+        }
+        const slot = await videoUploadFn({
+          data: {
+            fileName: videoFile.name,
+            contentType: videoFile.type as "video/mp4" | "video/webm" | "video/quicktime",
+          },
+        });
+        const { error: uploadError } = await supabase.storage
+          .from("learning-videos")
+          .uploadToSignedUrl(slot.path, slot.token, videoFile);
+        if (uploadError) throw new Error(uploadError.message);
+        uploadedVideoPath = slot.path;
+        uploadedVideoUrl = null;
+      }
+
+      return saveFn({
         data: {
           id: editingId,
           title: title.trim(),
           summary: summary.trim() || null,
           category: category.trim() || null,
-          video_url: videoUrl.trim() || null,
+          video_url: uploadedVideoUrl,
+          video_path: uploadedVideoPath,
           publish_date: publishDate,
           is_published: isPublished,
           questions: questions
@@ -925,7 +1354,8 @@ function LearningTab() {
               explanation: q.explanation.trim() || null,
             })),
         },
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-modules"] });
       resetForm();
@@ -1006,12 +1436,53 @@ function LearningTab() {
             onChange={(e) => setPublishDate(e.target.value)}
           />
         </div>
+        <label className="block">
+          <span className="text-sm font-semibold text-muted-foreground">
+            Upload lesson video (MP4, WebM, or MOV; max 50 MB)
+          </span>
+          <input
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime"
+            onChange={(e) => {
+              const selected = e.target.files?.[0] ?? null;
+              setVideoFile(selected);
+              if (selected) setVideoUrl("");
+            }}
+            className="mt-1 w-full text-base"
+          />
+          <p className="mt-1 text-sm text-muted-foreground">
+            {videoFile
+              ? `${videoFile.name} will upload when you publish the lesson.`
+              : videoPath
+                ? "A stored video is already attached to this lesson."
+                : "Use a short, compressed video for the most reliable upload."}
+          </p>
+        </label>
         <input
           className={inputClass}
-          placeholder="Video link (YouTube embed URL)"
+          placeholder="Or paste a YouTube embed URL"
           value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
+          onChange={(e) => {
+            setVideoUrl(e.target.value);
+            if (e.target.value.trim()) {
+              setVideoPath(null);
+              setVideoFile(null);
+            }
+          }}
         />
+        {(videoPath || videoUrl || videoFile) && (
+          <button
+            type="button"
+            onClick={() => {
+              setVideoUrl("");
+              setVideoPath(null);
+              setVideoFile(null);
+            }}
+            className="min-h-11 w-full rounded-xl border-2 border-border text-sm font-bold"
+          >
+            Remove lesson video
+          </button>
+        )}
         <label className="flex min-h-12 items-center gap-3 text-base font-semibold">
           <input
             type="checkbox"
@@ -1148,232 +1619,6 @@ function LearningTab() {
           ))}
           {(data?.modules ?? []).length === 0 ? (
             <p className="text-lg text-muted-foreground">No lessons yet.</p>
-          ) : null}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-type AnnouncementDraft = {
-  id: string | null;
-  title: string;
-  content: string;
-  category: string;
-  priority: "normal" | "important" | "urgent";
-  status: "draft" | "published";
-};
-
-const EMPTY_ANNOUNCEMENT: AnnouncementDraft = {
-  id: null,
-  title: "",
-  content: "",
-  category: "General",
-  priority: "normal",
-  status: "published",
-};
-
-const PRIORITY_STYLES: Record<string, string> = {
-  normal: "bg-secondary text-secondary-foreground",
-  important: "bg-accent/15 text-accent",
-  urgent: "bg-destructive/15 text-destructive",
-};
-
-function AnnouncementsTab() {
-  const qc = useQueryClient();
-  const listFn = useServerFn(adminListAnnouncements);
-  const saveFn = useServerFn(adminSaveAnnouncement);
-  const deleteFn = useServerFn(adminDeleteAnnouncement);
-
-  const [form, setForm] = useState<AnnouncementDraft | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-
-  const { data, isPending, error } = useQuery({
-    queryKey: ["admin-announcements"],
-    queryFn: () => listFn(),
-  });
-
-  const save = useMutation({
-    mutationFn: (v: AnnouncementDraft) => saveFn({ data: v }),
-    onSuccess: () => {
-      setForm(null);
-      setMessage("Announcement saved. Employees have been notified.");
-      qc.invalidateQueries({ queryKey: ["admin-announcements"] });
-    },
-    onError: (e: Error) => setMessage(e.message),
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-announcements"] }),
-    onError: (e: Error) => setMessage(e.message),
-  });
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => {
-          setMessage(null);
-          setForm({ ...EMPTY_ANNOUNCEMENT });
-        }}
-        className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
-      >
-        <Plus aria-hidden className="size-5" /> New announcement
-      </button>
-
-      {message ? <p className="mt-3 text-base font-semibold text-accent">{message}</p> : null}
-
-      {form ? (
-        <form
-          className="card-elevated mt-4 space-y-3 p-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            save.mutate(form);
-          }}
-        >
-          <h2 className="text-xl font-bold">
-            {form.id ? "Edit announcement" : "New announcement"}
-          </h2>
-          <label className="block">
-            <span className="text-sm font-semibold text-muted-foreground">Title</span>
-            <input
-              className={inputClass}
-              placeholder="Announcement title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              required
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-semibold text-muted-foreground">Category</span>
-            <input
-              className={inputClass}
-              placeholder="e.g. Safety, HR, General"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-            />
-          </label>
-          <div>
-            <span className="text-sm font-semibold text-muted-foreground">Priority</span>
-            <div className="mt-1 grid grid-cols-3 gap-2">
-              {(["normal", "important", "urgent"] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setForm({ ...form, priority: p })}
-                  className={`min-h-12 rounded-xl border-2 text-sm font-bold capitalize ${
-                    form.priority === p
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-          <label className="block">
-            <span className="text-sm font-semibold text-muted-foreground">Message</span>
-            <textarea
-              className="min-h-32 w-full rounded-xl border-2 border-border bg-background p-3 text-base"
-              placeholder="Write the announcement content..."
-              value={form.content}
-              onChange={(e) => setForm({ ...form, content: e.target.value })}
-              required
-            />
-          </label>
-          <label className="flex min-h-12 items-center gap-3 text-base font-semibold">
-            <input
-              type="checkbox"
-              className="size-6"
-              checked={form.status === "published"}
-              onChange={(e) =>
-                setForm({ ...form, status: e.target.checked ? "published" : "draft" })
-              }
-            />
-            Publish immediately (notify all employees)
-          </label>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={save.isPending}
-              className="min-h-14 flex-1 rounded-xl bg-primary text-lg font-bold text-primary-foreground"
-            >
-              {save.isPending ? "Saving…" : form.id ? "Save changes" : "Publish"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setForm(null)}
-              className="min-h-14 flex-1 rounded-xl border-2 border-border text-lg font-bold"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      ) : null}
-
-      {isPending ? (
-        <div className="mt-4">
-          <Spinner />
-        </div>
-      ) : error ? (
-        <p className="mt-4 text-lg text-destructive">You do not have admin access.</p>
-      ) : (
-        <ul className="mt-4 space-y-3">
-          {(data?.announcements ?? []).map((a) => (
-            <li key={a.id} className="card-elevated p-4">
-              <div className="flex items-start gap-2">
-                <Megaphone aria-hidden className="mt-1 size-5 shrink-0 text-primary" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-lg font-bold">{a.title}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {a.category} · {new Date(a.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${PRIORITY_STYLES[a.priority] ?? PRIORITY_STYLES["normal"]}`}
-                >
-                  {a.priority}
-                </span>
-              </div>
-              <p className="mt-2 line-clamp-2 text-base text-muted-foreground">{a.content}</p>
-              <p className="mt-2 text-sm font-semibold">
-                {a.status === "published" ? "Published" : "Draft"}
-              </p>
-              <div className="mt-3 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMessage(null);
-                    setForm({
-                      id: a.id,
-                      title: a.title,
-                      content: a.content,
-                      category: a.category,
-                      priority: a.priority as AnnouncementDraft["priority"],
-                      status: a.status as AnnouncementDraft["status"],
-                    });
-                  }}
-                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-primary text-base font-bold text-primary"
-                >
-                  <Pencil aria-hidden className="size-5" />
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => remove.mutate(a.id)}
-                  disabled={remove.isPending}
-                  className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-destructive text-base font-bold text-destructive"
-                >
-                  <Trash2 aria-hidden className="size-5" />
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-          {(data?.announcements ?? []).length === 0 ? (
-            <p className="text-lg text-muted-foreground">No announcements yet.</p>
           ) : null}
         </ul>
       )}

@@ -20,6 +20,7 @@ import { getHomeFeed } from "@/lib/home.functions";
 import { getDailyQuote } from "@/lib/daily-quote";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { getEvents } from "@/lib/events.functions";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export const Route = createFileRoute("/_authenticated/home")({
   head: () => ({
@@ -71,7 +72,7 @@ function HomePage() {
     .slice(0, 3);
 
   return (
-    <AppShell title={t("app.shortName")}>
+    <AppShell title={t("app.shortName")} headerAction={<NotificationBell />}>
       {isPending ? (
         <p className="flex items-center gap-2 text-lg text-muted-foreground">
           <Loader2 aria-hidden className="size-5 animate-spin" />
