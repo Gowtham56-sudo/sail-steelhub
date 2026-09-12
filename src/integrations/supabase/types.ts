@@ -14,48 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      announcements: {
-        Row: {
-          category: string
-          content: string
-          created_at: string
-          created_by: string | null
-          id: string
-          priority: string
-          published_at: string | null
-          status: string
-          target_audience: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          category?: string
-          content: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          priority?: string
-          published_at?: string | null
-          status?: string
-          target_audience?: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          category?: string
-          content?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          priority?: string
-          published_at?: string | null
-          status?: string
-          target_audience?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       audit_logs: {
         Row: {
           action: string
@@ -141,10 +99,12 @@ export type Database = {
           created_at: string
           date_of_birth: string | null
           date_of_joining: string | null
+          date_of_joining_ssp: string | null
           department: string | null
           designation: string | null
           employee_number: string
           full_name: string
+          grade: string | null
           id: string
           is_active: boolean
           is_admin: boolean
@@ -159,10 +119,12 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           date_of_joining?: string | null
+          date_of_joining_ssp?: string | null
           department?: string | null
           designation?: string | null
           employee_number: string
           full_name: string
+          grade?: string | null
           id?: string
           is_active?: boolean
           is_admin?: boolean
@@ -177,10 +139,12 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           date_of_joining?: string | null
+          date_of_joining_ssp?: string | null
           department?: string | null
           designation?: string | null
           employee_number?: string
           full_name?: string
+          grade?: string | null
           id?: string
           is_active?: boolean
           is_admin?: boolean
@@ -314,6 +278,7 @@ export type Database = {
           summary: string | null
           title: string
           updated_at: string
+          video_path: string | null
           video_url: string | null
         }
         Insert: {
@@ -325,6 +290,7 @@ export type Database = {
           summary?: string | null
           title: string
           updated_at?: string
+          video_path?: string | null
           video_url?: string | null
         }
         Update: {
@@ -336,53 +302,10 @@ export type Database = {
           summary?: string | null
           title?: string
           updated_at?: string
+          video_path?: string | null
           video_url?: string | null
         }
         Relationships: []
-      }
-      notifications: {
-        Row: {
-          announcement_id: string | null
-          created_at: string
-          id: string
-          is_read: boolean
-          message: string
-          priority: string
-          title: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          announcement_id?: string | null
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          message: string
-          priority?: string
-          title: string
-          type?: string
-          user_id: string
-        }
-        Update: {
-          announcement_id?: string | null
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          message?: string
-          priority?: string
-          title?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_announcement_id_fkey"
-            columns: ["announcement_id"]
-            isOneToOne: false
-            referencedRelation: "announcements"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       quiz_attempts: {
         Row: {
