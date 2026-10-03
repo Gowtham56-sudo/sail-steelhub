@@ -15,6 +15,7 @@ dist-ssr
 .tanstack/**
 .nitro
 .npm-cache/
+.vite-cache/
 *.local
 
 # Wrangler / Cloudflare
