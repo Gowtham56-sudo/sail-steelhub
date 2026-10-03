@@ -11,6 +11,14 @@ export default defineConfig({
     // Keep Vite's editable dependency cache out of OneDrive-managed node_modules.
     // This makes local demos reliable when OneDrive temporarily locks that folder.
     cacheDir: process.env.VITE_CACHE_DIR ?? ".vite-cache",
+    define: {
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
+        process.env.VITE_SUPABASE_URL || "https://xsmqabspeauyanvucogb.supabase.co"
+      ),
+      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
+        process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_FSnTQ2hqXbb2mla_iBmWug_cOBfNCNZ"
+      ),
+    },
   },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
