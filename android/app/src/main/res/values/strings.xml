@@ -1,12 +1,12 @@
 <resources>
     <string name="app_name">SAIL SteelHub</string>
-    <string name="default_server_url">http://192.168.31.236:8081</string>
+    <string name="default_server_url">https://sail-steelhub.lovable.app</string>
     <string name="connection_error_title">Connection Unavailable</string>
-    <string name="connection_error_msg">Could not reach the SAIL SteelHub server at:\n%1$s\n\nEnsure your PC is running the dev server and your phone is on the same Wi-Fi.</string>
+    <string name="connection_error_msg">Could not connect to SAIL SteelHub.\n\nPlease check your internet connection and tap retry.</string>
     <string name="btn_retry">Retry Connection</string>
-    <string name="btn_change_url">Change Server URL</string>
-    <string name="dialog_change_url_title">Configure Server URL</string>
-    <string name="dialog_change_url_hint">e.g. http://192.168.31.236:8081 or http://10.0.2.2:8081</string>
+    <string name="btn_change_url">Configure Server</string>
+    <string name="dialog_change_url_title">Server Configuration</string>
+    <string name="dialog_change_url_hint">Enter official server address</string>
     <string name="btn_save">Save &amp; Connect</string>
     <string name="btn_cancel">Cancel</string>
 </resources>

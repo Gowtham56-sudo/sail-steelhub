@@ -25,12 +25,19 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Build Debug APK
+      - name: Build APKs (Release & Debug)
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease assembleDebug --no-daemon
 
-      - name: Upload APK Artifact
+      - name: Upload Official Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SAILSteelHub-v1.0.0-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 60
+
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: SAILSteelHub-debug-apk
