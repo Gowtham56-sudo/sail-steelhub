@@ -22,8 +22,8 @@ async function verifyEmployee(request: Request): Promise<boolean> {
   const token = authHeader.slice(7);
   if (token.split(".").length !== 3) return false;
 
-  const url = process.env["SUPABASE_URL"];
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+  const url = process.env["SUPABASE_URL"] || "https://xsmqabspeauyanvucogb.supabase.co";
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"] || "sb_publishable_FSnTQ2hqXbb2mla_iBmWug_cOBfNCNZ";
   if (!url || !key) return false;
 
   const supabase = createClient(url, key, {

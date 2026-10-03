@@ -12,7 +12,9 @@ export const Route = createFileRoute("/api/public/daily-celebrations")({
       POST: async ({ request }) => {
         const secret = process.env["CRON_SECRET"];
         const anonKey =
-          process.env["SUPABASE_ANON_KEY"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+          process.env["SUPABASE_ANON_KEY"] ??
+          process.env["SUPABASE_PUBLISHABLE_KEY"] ??
+          "sb_publishable_FSnTQ2hqXbb2mla_iBmWug_cOBfNCNZ";
         const cronKey = request.headers.get("x-cron-key") ?? "";
         const apiKey = request.headers.get("apikey") ?? "";
         const ok =
