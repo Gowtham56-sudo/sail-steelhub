@@ -29,11 +29,19 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+function getFallbackServiceKey(): string {
+  const b64 = 'c2Jfc2VjcmV0X1l3eXNGM2VnWGtrNnloZUY1ZEJHM3dfOTdXVEJmdU4=';
+  try {
+    if (typeof Buffer !== 'undefined') return Buffer.from(b64, 'base64').toString('utf-8');
+    if (typeof atob === 'function') return atob(b64);
+  } catch {}
+  return '';
+}
+
 function createSupabaseAdminClient() {
   const SUPABASE_URL = process.env['SUPABASE_URL'] || 'https://xsmqabspeauyanvucogb.supabase.co';
   const SUPABASE_SERVICE_ROLE_KEY =
-    process.env['SUPABASE_SERVICE_ROLE_KEY'] ||
-    (typeof atob === 'function' ? atob('c2Jfc2VjcmV0X1l3eXNGM2VnWGtrNnloZUY1ZEJHM3dfOTdXVEJmdU4=') : '');
+    process.env['SUPABASE_SERVICE_ROLE_KEY'] || getFallbackServiceKey();
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [
