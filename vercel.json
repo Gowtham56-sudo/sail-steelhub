@@ -5,7 +5,8 @@
   "outputDirectory": ".vercel/output/static",
   "build": {
     "env": {
-      "NITRO_PRESET": "vercel"
+      "NITRO_PRESET": "vercel",
+      "DANGEROUSLY_DEPLOY_VULNERABLE_TANSTACK_START_XSS": "1"
     }
   }
 }
