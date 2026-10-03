@@ -18,9 +18,10 @@ dist-ssr
 .vite-cache/
 *.local
 
-# Wrangler / Cloudflare
+# Deployment & output
 .wrangler/
 .dev.vars
+.vercel/
 
 # Editor directories and files
 .vscode/*
