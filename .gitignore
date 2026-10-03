@@ -32,3 +32,11 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Android build outputs and local configuration
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk

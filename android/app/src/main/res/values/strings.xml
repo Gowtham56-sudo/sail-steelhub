@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">SAIL SteelHub</string>
+    <string name="default_server_url">https://sail-steelhub.lovable.app</string>
+    <string name="connection_error_title">Connection Unavailable</string>
+    <string name="connection_error_msg">Could not reach the SAIL SteelHub server at:\n%1$s\n\nPlease check your internet connection or configure a custom development URL.</string>
+    <string name="btn_retry">Retry Connection</string>
+    <string name="btn_change_url">Change Server URL</string>
+    <string name="dialog_change_url_title">Configure Server URL</string>
+    <string name="dialog_change_url_hint">e.g. https://sail-steelhub.lovable.app or http://10.0.2.2:3000</string>
+    <string name="btn_save">Save &amp; Connect</string>
+    <string name="btn_cancel">Cancel</string>
+</resources>
